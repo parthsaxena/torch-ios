@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="21701" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" launchScreen="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="01J-lp-oVM">
+    <device id="retina6_12" orientation="portrait" appearance="light"/>
+    <dependencies>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="21679"/>
+        <capability name="Named colors" minToolsVersion="9.0"/>
+        <capability name="Safe area layout guides" minToolsVersion="9.0"/>
+        <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
+    </dependencies>
+    <scenes>
+        <!--View Controller-->
+        <scene sceneID="EHf-IW-A2E">
+            <objects>
+                <viewController id="01J-lp-oVM" sceneMemberID="viewController">
+                    <view key="view" contentMode="scaleToFill" id="Ze5-6b-2t3">
+                        <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
+                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <subviews>
+                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="LaunchScreenImage" translatesAutoresizingMaskIntoConstraints="NO" id="1Qt-e9-VDM">
+                                <rect key="frame" x="116.66666666666669" y="305" width="160" height="242"/>
+                                <constraints>
+                                    <constraint firstAttribute="width" constant="160" id="Fkk-YB-xUI"/>
+                                    <constraint firstAttribute="height" constant="242" id="Xvn-JW-Wb6"/>
+                                </constraints>
+                            </imageView>
+                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="LaunchScreenBackgroundLogo" translatesAutoresizingMaskIntoConstraints="NO" id="dhL-hK-eqJ">
+                                <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
+                            </imageView>
+                        </subviews>
+                        <viewLayoutGuide key="safeArea" id="Bcu-3y-fUS"/>
+                        <color key="backgroundColor" name="LaunchScreenBackgroundColor"/>
+                        <constraints>
+                            <constraint firstItem="1Qt-e9-VDM" firstAttribute="centerY" secondItem="Ze5-6b-2t3" secondAttribute="centerY" id="2A7-PG-9rL"/>
+                            <constraint firstItem="dhL-hK-eqJ" firstAttribute="top" secondItem="Ze5-6b-2t3" secondAttribute="top" id="6yu-7y-Gvw"/>
+                            <constraint firstItem="dhL-hK-eqJ" firstAttribute="trailing" secondItem="Bcu-3y-fUS" secondAttribute="trailing" id="7TC-YM-n6C"/>
+                            <constraint firstItem="1Qt-e9-VDM" firstAttribute="centerX" secondItem="Ze5-6b-2t3" secondAttribute="centerX" id="8qb-Fa-7eX"/>
+                            <constraint firstItem="dhL-hK-eqJ" firstAttribute="leading" secondItem="Bcu-3y-fUS" secondAttribute="leading" id="l6b-sS-VsM"/>
+                            <constraint firstAttribute="bottom" secondItem="dhL-hK-eqJ" secondAttribute="bottom" id="wj2-Ws-Fxd"/>
+                        </constraints>
+                    </view>
+                </viewController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="iYj-Kq-Ea1" userLabel="First Responder" sceneMemberID="firstResponder"/>
+            </objects>
+            <point key="canvasLocation" x="52.671755725190835" y="374.64788732394368"/>
+        </scene>
+    </scenes>
+    <resources>
+        <image name="LaunchScreenBackgroundLogo" width="1572" height="3408"/>
+        <image name="LaunchScreenImage" width="524" height="1100"/>
+        <namedColor name="LaunchScreenBackgroundColor">
+            <color red="1" green="0.3529999852180481" blue="0.14100000262260437" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+        </namedColor>
+    </resources>
+</document>

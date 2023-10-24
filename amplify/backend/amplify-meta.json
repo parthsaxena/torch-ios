@@ -1,0 +1,54 @@
+{
+  "providers": {
+    "awscloudformation": {
+      "AuthRoleName": "amplify-torch-dev-184659-authRole",
+      "UnauthRoleArn": "arn:aws:iam::462215757394:role/amplify-torch-dev-184659-unauthRole",
+      "AuthRoleArn": "arn:aws:iam::462215757394:role/amplify-torch-dev-184659-authRole",
+      "Region": "us-west-2",
+      "DeploymentBucketName": "amplify-torch-dev-184659-deployment",
+      "UnauthRoleName": "amplify-torch-dev-184659-unauthRole",
+      "StackName": "amplify-torch-dev-184659",
+      "StackId": "arn:aws:cloudformation:us-west-2:462215757394:stack/amplify-torch-dev-184659/064cb780-08c3-11ee-800f-0a4cf15e0a45",
+      "AmplifyAppId": "dz4kkk545j74q"
+    }
+  },
+  "auth": {
+    "torchb5812d08": {
+      "service": "Cognito",
+      "serviceType": "imported",
+      "providerPlugin": "awscloudformation",
+      "dependsOn": [],
+      "customAuth": false,
+      "output": {
+        "UserPoolId": "us-west-2_iVtMyKgU7",
+        "UserPoolName": "users-generic",
+        "AppClientID": "20a8gdfrkhv12oobuksfrh80qg",
+        "AppClientIDWeb": "20a8gdfrkhv12oobuksfrh80qg"
+      },
+      "frontendAuthConfig": {
+        "socialProviders": [],
+        "usernameAttributes": [
+          "EMAIL"
+        ],
+        "signupAttributes": [
+          "EMAIL"
+        ],
+        "passwordProtectionSettings": {
+          "passwordPolicyMinLength": 8,
+          "passwordPolicyCharacters": [
+            "REQUIRES_LOWERCASE",
+            "REQUIRES_UPPERCASE",
+            "REQUIRES_NUMBERS",
+            "REQUIRES_SYMBOLS"
+          ]
+        },
+        "mfaConfiguration": "OFF",
+        "mfaTypes": [],
+        "verificationMechanisms": [
+          "EMAIL"
+        ]
+      },
+      "lastPushTimeStamp": "2023-06-12T01:50:43.838Z"
+    }
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "dev": {
+    "awscloudformation": {
+      "AuthRoleName": "amplify-torch-dev-184659-authRole",
+      "UnauthRoleArn": "arn:aws:iam::462215757394:role/amplify-torch-dev-184659-unauthRole",
+      "AuthRoleArn": "arn:aws:iam::462215757394:role/amplify-torch-dev-184659-authRole",
+      "Region": "us-west-2",
+      "DeploymentBucketName": "amplify-torch-dev-184659-deployment",
+      "UnauthRoleName": "amplify-torch-dev-184659-unauthRole",
+      "StackName": "amplify-torch-dev-184659",
+      "StackId": "arn:aws:cloudformation:us-west-2:462215757394:stack/amplify-torch-dev-184659/064cb780-08c3-11ee-800f-0a4cf15e0a45",
+      "AmplifyAppId": "dz4kkk545j74q"
+    },
+    "categories": {
+      "auth": {
+        "torchb5812d08": {
+          "userPoolId": "us-west-2_iVtMyKgU7",
+          "userPoolName": "users-generic",
+          "webClientId": "20a8gdfrkhv12oobuksfrh80qg",
+          "nativeClientId": "20a8gdfrkhv12oobuksfrh80qg"
+        }
+      }
+    }
+  }
+}

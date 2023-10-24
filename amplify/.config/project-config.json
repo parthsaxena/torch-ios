@@ -1,0 +1,8 @@
+{
+  "providers": [
+    "awscloudformation"
+  ],
+  "projectName": "Torch",
+  "version": "3.1",
+  "frontend": "ios"
+}

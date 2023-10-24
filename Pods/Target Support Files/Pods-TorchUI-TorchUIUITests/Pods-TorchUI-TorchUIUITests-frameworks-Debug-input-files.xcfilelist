@@ -1,0 +1,8 @@
+${PODS_ROOT}/Target Support Files/Pods-TorchUI-TorchUIUITests/Pods-TorchUI-TorchUIUITests-frameworks.sh
+${BUILT_PRODUCTS_DIR}/MapboxMaps/MapboxMaps.framework
+${BUILT_PRODUCTS_DIR}/Starscream/Starscream.framework
+${BUILT_PRODUCTS_DIR}/SwiftUI-Shimmer/SwiftUI_Shimmer.framework
+${BUILT_PRODUCTS_DIR}/Turf/Turf.framework
+${PODS_XCFRAMEWORKS_BUILD_DIR}/MapboxCommon/MapboxCommon.framework/MapboxCommon
+${PODS_XCFRAMEWORKS_BUILD_DIR}/MapboxCoreMaps/MapboxCoreMaps.framework/MapboxCoreMaps
+${PODS_XCFRAMEWORKS_BUILD_DIR}/MapboxMobileEvents/MapboxMobileEvents.framework/MapboxMobileEvents
