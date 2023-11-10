@@ -3423,6 +3423,12 @@ struct MapboxMapViewWrapper: UIViewControllerRepresentable {
     @Binding var sensorTapped: Bool
     @Binding var moveToUserTapped: Bool
     @Binding var zoomChanged: Bool
+    @Binding var mapOffset: CGFloat
+    @Binding var dragOffset: CGSize
+    @State var triggerUI: Bool = false
+    @State var initialMapOffset: Bool = false
+    
+    let ICON_SMALL_ZOOM_THRESHOLD = 12.0
      
     func makeUIViewController(context: Context) -> MapboxViewController {
         let vc = MapboxViewController()
@@ -3438,7 +3444,7 @@ struct MapboxMapViewWrapper: UIViewControllerRepresentable {
 //        vc.mapView.camera.fly(to: cameraOptions, duration: 0.1)
         
         let myResourceOptions = ResourceOptions(accessToken: "pk.eyJ1IjoidnRyZW1zaW4iLCJhIjoiY2xsNzE0M2lmMGd0eTNnazRjM2s3MndvZCJ9.z9GP9XylmH4RKR-swu14nA")
-        let cameraOptions = CameraOptions(center: sessionManager.selectedProperty!.coordinate!, zoom: self.zoomLevel, bearing: 0.0, pitch: 0.0)
+        let cameraOptions = CameraOptions(center: sessionManager.selectedProperty!.coordinate!, padding: UIEdgeInsets(top: 0.0, left: 0.0, bottom: self.mapOffset, right: 0.0), zoom: self.zoomLevel, bearing: 0.0, pitch: 0.0)
         let myMapInitOptions = MapInitOptions(resourceOptions: myResourceOptions, cameraOptions: cameraOptions, styleJSON: self.jsonString)
         vc.mapView = MapView(frame: UIScreen.main.bounds, mapInitOptions: myMapInitOptions)
         vc.mapView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
@@ -3447,7 +3453,14 @@ struct MapboxMapViewWrapper: UIViewControllerRepresentable {
         vc.mapView.mapboxMap.onEvery(event: .cameraChanged) { event in
 //            // print("camera changed")
             pin = vc.mapView.cameraState.center
+            print("Set pin: \(pin)")
+            triggerUI.toggle()
+            self.checkZoomLevelAnnotations(uiViewController: vc)
+            vc.pinImageView.frame = CGRectMake(vc.mapView.anchor.x - 30, vc.mapView.anchor.y - 80, 60, 69)
+//            self.updateViewCont
         }
+        print("GOOOO mapOff: \(self.mapOffset)")
+//        pin = vc.mapView.cameraState.center
         vc.mapView.location.options.puckType = .puck2D(Puck2DConfiguration.makeDefault(showBearing: true))
 //        vc.mapView.location.options.puckBearingEnabled = true
         
@@ -3481,62 +3494,79 @@ struct MapboxMapViewWrapper: UIViewControllerRepresentable {
         zoomLevel = 15
         sensorTapped = true
         showDetectorDetails = true
+        dragOffset = .zero
     }
     
     func addMarkersToViewController(vc: MapboxViewController, context: Context) {
         vc.annotationManager = vc.mapView.annotations.makePointAnnotationManager()
         
         // Build property icon view
-        let width = max(80, SessionManager.shared.selectedProperty!.propertyName.count * 12 + 25)
-        let viewFromXib = Bundle.main.loadNibNamed("PropertyIconView", owner: self, options: nil)![0] as! PropertyIconView
-        viewFromXib.frame = CGRect(x: 0, y: 0, width: width, height: 50)
-
-        viewFromXib.propertyImageView.layer.shadowColor = UIColor.black.cgColor
-        viewFromXib.propertyImageView.layer.shadowOpacity = 0.2
-        viewFromXib.propertyImageView.layer.shadowOffset = .zero
-        viewFromXib.propertyImageView.layer.shadowRadius = 4
+        let customView = PropertyIconView.instanceFromNib()
+        customView.configure(with: SessionManager.shared.selectedProperty!.propertyName)
 
         let rectShape = CAShapeLayer()
-        rectShape.bounds = viewFromXib.frame
-        rectShape.position = viewFromXib.center
-        rectShape.path = UIBezierPath(roundedRect: CGRectMake(0, 0, CGFloat(width - 30), viewFromXib.propertyMainView.bounds.height), byRoundingCorners: [.topRight, .bottomRight], cornerRadii: CGSize(width: 50, height: 50)).cgPath
+        rectShape.bounds = customView.frame
+        rectShape.position = customView.center
+        rectShape.path = UIBezierPath(roundedRect: CGRectMake(0, 0, customView.propertyMainView.bounds.width, customView.propertyMainView.bounds.height), byRoundingCorners: [.topRight, .bottomRight], cornerRadii: CGSize(width: 50, height: 50)).cgPath
+        
+        print("Creating rectshape: \(CGRectMake(0, 0, customView.propertyMainView.bounds.width, customView.propertyMainView.bounds.height))")
 
 
-        viewFromXib.propertyMainView.layer.mask = rectShape
-        viewFromXib.propertyLabel.text = SessionManager.shared.selectedProperty!.propertyName
-        viewFromXib.propertyLabel.textColor = UIColor(cgColor: CustomColors.TorchGreen.cgColor!)
-        viewFromXib.propertyMainView.backgroundColor = UIColor.white
+        customView.propertyMainView.layer.mask = rectShape
+        
+        customView.layer.shadowColor = UIColor.black.cgColor
+        customView.layer.shadowOpacity = 0.2
+        customView.layer.shadowOffset = .zero
+        customView.layer.shadowRadius = 4
+        
+        customView.propertyMainView.layoutIfNeeded()
+        customView.propertyLabel.text = SessionManager.shared.selectedProperty!.propertyName
+        customView.propertyLabel.textColor = UIColor(cgColor: CustomColors.TorchGreen.cgColor!)
+        customView.propertyMainView.backgroundColor = UIColor.white
+        customView.configure(with: SessionManager.shared.selectedProperty!.propertyName)
+        print("Got width conf: \(customView.frame.width)")
         let propertyAnnotationOptions = ViewAnnotationOptions(
             geometry: Point(sessionManager.selectedProperty!.coordinate!),
-            width: CGFloat(max(80, SessionManager.shared.selectedProperty!.propertyName.count * 12 + 25)),
+            width: customView.frame.width,
             height: 50,
             allowOverlap: false,
             anchor: .left
         )
-        try? vc.mapView.viewAnnotations.add(viewFromXib, options: propertyAnnotationOptions)
+//        var cameraOptions = CameraOptions(cameraState: vc.mapView.cameraState)
+//        cameraOptions.padding?.right = (customView.frame.width)
+//        DispatchQueue.main.async {
+//            vc.mapView.camera.ease(to: cameraOptions, duration: 0.1)
+//            print("eased camera")
+//        }
+//        vc.mapView.cameraState.padding.right = (customView.frame.width) / 2
+        try? vc.mapView.viewAnnotations.add(customView, options: propertyAnnotationOptions)
         
         // iterate over selected property's detectors
-        for detector in sessionManager.selectedProperty!.detectors {
-            var pointAnnotation = PointAnnotation(id: detector.id, coordinate: detector.coordinate!)
-            var annotationIcon = "DetectorIcons/\(detector.sensorIdx!)"
-            if detector.threat == Threat.Red {
-                annotationIcon = "DetectorIcons/ThreatRed"
-            } else if detector.threat == Threat.Yellow {
-                annotationIcon = "DetectorIcons/ThreatYellow"
+        if SessionManager.shared.selectedPropertyIndex < SessionManager.shared.properties.count {
+            for detector in SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors {
+                var pointAnnotation = PointAnnotation(id: detector.id, coordinate: detector.coordinate!)
+                var annotationIcon = "DetectorIcons/\(max(detector.sensorIdx!, 1))"
+                if detector.threat == Threat.Red {
+                    annotationIcon = "DetectorIcons/ThreatRed"
+                } else if detector.threat == Threat.Yellow {
+                    annotationIcon = "DetectorIcons/ThreatYellow"
+                }
+                
+                // print("detect \(detector.id) \(detector.threat)")
+                
+                var annotationImage = UIImage(named: annotationIcon)!
+                annotationImage.scale(newWidth: 1.0)
+                pointAnnotation.image = .init(image: annotationImage, name: annotationIcon)
+                //            pointAnnotation.image?.image.scale = 4.0
+                pointAnnotation.iconAnchor = .left
+                //            pointAnnotation.iconOffset = [-1 * (pointAnnotation.image?.image.size.width)!]
+                //            pointAnnotation.iconOff
+                pointAnnotation.iconSize = 0.25
+                
+                vc.annotationManager.annotations.append(pointAnnotation)
+                print("Adding marker")
             }
-            
-            // print("detect \(detector.id) \(detector.threat)")
-            
-            var annotationImage = UIImage(named: annotationIcon)!
-            annotationImage.scale(newWidth: 1.0)
-            pointAnnotation.image = .init(image: annotationImage, name: annotationIcon)
-//            pointAnnotation.image?.image.scale = 4.0
-            pointAnnotation.iconAnchor = .bottom
-            pointAnnotation.iconSize = 0.25
-            
-            vc.annotationManager.annotations.append(pointAnnotation)
         }
-        
         vc.annotationManager.delegate = context.coordinator
     }
     
@@ -3546,63 +3576,105 @@ struct MapboxMapViewWrapper: UIViewControllerRepresentable {
       
     func updateUIViewController(_ uiViewController: MapboxViewController, context: Context) {
         // print("Panning0: \(self.sensorTapped)")
+        print("GOOOO2 mapOff: \(self.mapOffset)")
         if (self.moveToUserTapped) {
-            DispatchQueue.main.async {                
+            print("offset: 1")
+            DispatchQueue.main.async {
                 var cameraOptions = CameraOptions(zoom: 15.0, bearing: 0.0, pitch: 0.0)
                 self.moveToUserTapped = false
                 cameraOptions.center = uiViewController.mapView.location.latestLocation?.coordinate
+                cameraOptions.padding = UIEdgeInsets(top: 0.0, left: 0.0, bottom: self.mapOffset, right: 0.0)
                 uiViewController.mapView.camera.fly(to: cameraOptions, duration: 0.1)
             }
         } else if (selectedDetectorIndex != nil && self.sensorTapped) {
+            print("offset: 2")
             DispatchQueue.main.async {
                 var cameraOptions = CameraOptions(zoom: zoomLevel, bearing: 0.0, pitch: 0.0)
                 // print("Panning1: \(self.sensorTapped)")
                 self.sensorTapped = false
                 // print("Panning2: \(self.sensorTapped)")
                 cameraOptions.center = SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors[SessionManager.shared.selectedDetectorIndex].coordinate!
+                cameraOptions.padding = UIEdgeInsets(top: 0.0, left: 0.0, bottom: self.mapOffset, right: 0.0)
                 uiViewController.mapView.camera.fly(to: cameraOptions, duration: 0.1)
             }
         } else if (self.zoomChanged) {
+            print("offset: 3")
             DispatchQueue.main.async {
                 self.zoomChanged = false
                 var cameraOptions = CameraOptions(zoom: zoomLevel, bearing: 0.0, pitch: 0.0)
+                cameraOptions.padding = UIEdgeInsets(top: 0.0, left: 0.0, bottom: self.mapOffset, right: uiViewController.mapView.cameraState.padding.right)
+                uiViewController.mapView.camera.fly(to: cameraOptions, duration: 0.1)
+            }
+        } else if (!self.initialMapOffset && self.mapOffset != 0) {
+            print("offset: 4")
+            DispatchQueue.main.async {
+                self.initialMapOffset = true
+                var cameraOptions = CameraOptions(zoom: zoomLevel, bearing: 0.0, pitch: 0.0)
+                cameraOptions.padding = UIEdgeInsets(top: 0.0, left: 0.0, bottom: self.mapOffset, right: uiViewController.mapView.cameraState.padding.right)
                 uiViewController.mapView.camera.fly(to: cameraOptions, duration: 0.1)
             }
         }
+//        else if (self.mapOffset != uiViewController.mapView.cameraState.padding.bottom) {
+//            print("offset: 4")
+//            DispatchQueue.main.async {
+//                self.zoomChanged = false
+//                var cameraOptions = CameraOptions(center: uiViewController.mapView.cameraState.center, padding: UIEdgeInsets.init(top: 0, left: 0, bottom: self.mapOffset, right: 0), zoom: uiViewController.mapView.cameraState.zoom, bearing: uiViewController.mapView.cameraState.bearing, pitch: uiViewController.mapView.cameraState.pitch)
+//                uiViewController.mapView.camera.fly(to: cameraOptions, duration: 0.1)
+//            }
+//        }
         
         if self.needsLocationPin {
             uiViewController.pinImageView.isHidden = false
+            uiViewController.pinImageView.frame = CGRectMake(uiViewController.mapView.anchor.x - 30, uiViewController.mapView.anchor.y - 80, 60, 69)            
+//            uiViewController.mapView.anchor.y
+//            let frame = self.pinImageView.frame
+//            uiViewController.pinImageView.frame = CGRectMake(frame.x, frame.)
         } else {
             uiViewController.pinImageView.isHidden = true
         }
         
-        // print("updating annots")
+//        uiViewController.mapView.camera.ease(to: .init(cameraState: <#T##CameraState#>), duration: <#T##TimeInterval#>)
+        
+         print("updating annots: \(uiViewController.annotationManager.annotations)")
         uiViewController.annotationManager.annotations = []
-        for detector in sessionManager.selectedProperty!.detectors {
-            guard let coord = detector.coordinate else {
-                continue
+        if (SessionManager.shared.selectedPropertyIndex >= 0 && SessionManager.shared.selectedPropertyIndex < SessionManager.shared.properties.count) {
+            let detectors = SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors
+            for detector in detectors {
+                guard let coord = detector.coordinate else {
+                    continue
+                }
+                
+                var pointAnnotation = PointAnnotation(id: detector.id, coordinate: coord)
+                var annotationIcon = "DetectorIcons/ThreatGreenSmall"
+                if detector.threat == Threat.Red {
+                    annotationIcon = "DetectorIcons/ThreatMapRed\(max(detector.sensorIdx!, 1))"
+                    if uiViewController.mapView.cameraState.zoom < ICON_SMALL_ZOOM_THRESHOLD {
+                        annotationIcon = "DetectorIcons/ThreatRedSmall"
+                    }
+                } else if detector.threat == Threat.Yellow {
+                    annotationIcon = "DetectorIcons/ThreatMapYellow\(max(detector.sensorIdx!, 1))"
+                    if uiViewController.mapView.cameraState.zoom < ICON_SMALL_ZOOM_THRESHOLD {
+                        annotationIcon = "DetectorIcons/ThreatYellowSmall"
+                    }
+                } else {
+                    annotationIcon = "DetectorIcons/\(max(detector.sensorIdx!, 1))"
+                    if uiViewController.mapView.cameraState.zoom < ICON_SMALL_ZOOM_THRESHOLD {
+                        annotationIcon = "DetectorIcons/ThreatGreenSmall"
+                    }
+                }
+                
+                // print("detect \(detector.id) \(detector.threat) \(annotationIcon)")
+                
+                var annotationImage = UIImage(named: annotationIcon)!
+                annotationImage.scale(newWidth: 1.0)
+                pointAnnotation.image = .init(image: annotationImage, name: annotationIcon)
+    //            pointAnnotation.image?.image.scale = 4.0
+                pointAnnotation.iconAnchor = .center
+                pointAnnotation.iconSize = 0.25
+                
+                print("Adding annot updateUI")
+                uiViewController.annotationManager.annotations.append(pointAnnotation)
             }
-            
-            var pointAnnotation = PointAnnotation(id: detector.id, coordinate: coord)
-            var annotationIcon = ""
-            if detector.threat == Threat.Red {
-                annotationIcon = "DetectorIcons/ThreatRed"
-            } else if detector.threat == Threat.Yellow {
-                annotationIcon = "DetectorIcons/ThreatYellow"
-            } else {
-                annotationIcon = "DetectorIcons/\(detector.sensorIdx!)"
-            }
-            
-            // print("detect \(detector.id) \(detector.threat) \(annotationIcon)")
-            
-            var annotationImage = UIImage(named: annotationIcon)!
-            annotationImage.scale(newWidth: 1.0)
-            pointAnnotation.image = .init(image: annotationImage, name: annotationIcon)
-//            pointAnnotation.image?.image.scale = 4.0
-            pointAnnotation.iconAnchor = .left
-            pointAnnotation.iconSize = 0.25
-            
-            uiViewController.annotationManager.annotations.append(pointAnnotation)
         }
         
         for annotation in self.annotations {
@@ -3610,6 +3682,54 @@ struct MapboxMapViewWrapper: UIViewControllerRepresentable {
         }
         
         // print("updating endd map")
+    }
+    
+    func checkZoomLevelAnnotations(uiViewController: MapboxViewController) {
+        print("updating annots: \(uiViewController.annotationManager.annotations)")
+       uiViewController.annotationManager.annotations = []
+       if (SessionManager.shared.selectedPropertyIndex >= 0 && SessionManager.shared.selectedPropertyIndex < SessionManager.shared.properties.count) {
+           let detectors = SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors
+           for detector in detectors {
+               guard let coord = detector.coordinate else {
+                   continue
+               }
+               
+               var pointAnnotation = PointAnnotation(id: detector.id, coordinate: coord)
+               var annotationIcon = "DetectorIcons/ThreatGreenSmall"
+               if detector.threat == Threat.Red {
+                   annotationIcon = "DetectorIcons/ThreatMapRed\(max(detector.sensorIdx!, 1))"
+                   if uiViewController.mapView.cameraState.zoom < ICON_SMALL_ZOOM_THRESHOLD {
+                       annotationIcon = "DetectorIcons/ThreatRedSmall"
+                   }
+               } else if detector.threat == Threat.Yellow {
+                   annotationIcon = "DetectorIcons/ThreatMapYellow\(max(detector.sensorIdx!, 1))"
+                   if uiViewController.mapView.cameraState.zoom < ICON_SMALL_ZOOM_THRESHOLD {
+                       annotationIcon = "DetectorIcons/ThreatYellowSmall"
+                   }
+               } else {
+                   annotationIcon = "DetectorIcons/\(max(detector.sensorIdx!, 1))"
+                   if uiViewController.mapView.cameraState.zoom < ICON_SMALL_ZOOM_THRESHOLD {
+                       annotationIcon = "DetectorIcons/ThreatGreenSmall"
+                   }
+               }
+               
+               // print("detect \(detector.id) \(detector.threat) \(annotationIcon)")
+               
+               var annotationImage = UIImage(named: annotationIcon)!
+               annotationImage.scale(newWidth: 1.0)
+               pointAnnotation.image = .init(image: annotationImage, name: annotationIcon)
+   //            pointAnnotation.image?.image.scale = 4.0
+               pointAnnotation.iconAnchor = .center
+               pointAnnotation.iconSize = 0.25
+               
+               print("Adding annot updateUI")
+               uiViewController.annotationManager.annotations.append(pointAnnotation)
+           }
+       }
+       
+       for annotation in self.annotations {
+           uiViewController.annotationManager.annotations.append(annotation)
+       }
     }
     
     final class MapboxViewCoordinator: NSObject, AnnotationInteractionDelegate {

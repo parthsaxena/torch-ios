@@ -3413,6 +3413,7 @@ struct MapboxPlaceSensorViewWrapper: UIViewControllerRepresentable {
     }
     """
     
+    @Binding var mapOffset: CGSize
     @Binding var showDetectorDetails: Bool
 //    @Binding var zoomLevel: CGFloat
     @ObservedObject var sessionManager = SessionManager.shared
@@ -3437,8 +3438,9 @@ struct MapboxPlaceSensorViewWrapper: UIViewControllerRepresentable {
 //        let cameraOptions = CameraOptions(center: sessionManager.selectedProperty!.coordinate!, zoom: zoomLevel, bearing: 0.0, pitch: 0.0)
 //        vc.mapView.camera.fly(to: cameraOptions, duration: 0.1)
         
+        print("Got map offset: \(self.mapOffset)")
         let myResourceOptions = ResourceOptions(accessToken: "pk.eyJ1IjoidnRyZW1zaW4iLCJhIjoiY2xsNzE0M2lmMGd0eTNnazRjM2s3MndvZCJ9.z9GP9XylmH4RKR-swu14nA")
-        let cameraOptions = CameraOptions(center: sessionManager.selectedProperty!.coordinate!, padding: .init(top: 0, left: 0, bottom: 200, right: 0), zoom: self.zoomLevel, bearing: 0.0, pitch: 0.0)
+        let cameraOptions = CameraOptions(center: sessionManager.selectedProperty!.coordinate!, padding: .init(top: 0, left: 0, bottom: self.mapOffset.height == 0 ? 355 : self.mapOffset.height, right: 0), zoom: self.zoomLevel, bearing: 0.0, pitch: 0.0)
         let myMapInitOptions = MapInitOptions(resourceOptions: myResourceOptions, cameraOptions: cameraOptions, styleJSON: self.jsonString)
         vc.mapView = MapView(frame: UIScreen.main.bounds, mapInitOptions: myMapInitOptions)
         vc.mapView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
@@ -3447,6 +3449,7 @@ struct MapboxPlaceSensorViewWrapper: UIViewControllerRepresentable {
         vc.mapView.mapboxMap.onEvery(event: .cameraChanged) { event in
             // print("camera changed")
             pin = vc.mapView.cameraState.center
+            vc.pinImageView.frame = CGRectMake(vc.mapView.anchor.x - 30, vc.mapView.anchor.y - 80, 60, 69)
         }
         vc.mapView.location.options.puckType = .puck2D(Puck2DConfiguration.makeDefault(showBearing: true))
 //        vc.view = vc.mapView
@@ -3472,55 +3475,39 @@ struct MapboxPlaceSensorViewWrapper: UIViewControllerRepresentable {
         vc.annotationManager = vc.mapView.annotations.makePointAnnotationManager()
 //        vc.mapView.annotations.annotationManagersById.append(<#T##S#>)
         
-        // iterate over selected property's detectors
-        for detector in sessionManager.selectedProperty!.detectors {
-            var pointAnnotation = PointAnnotation(id: detector.id, coordinate: detector.coordinate!)
-            var annotationIcon = "DetectorIcons/\(detector.sensorIdx!)"
-            if detector.threat == Threat.Red {
-                annotationIcon = "DetectorIcons/ThreatRed"
-            } else if detector.threat == Threat.Yellow {
-                annotationIcon = "DetectorIcons/ThreatYellow"
-            }
-            
-            var annotationImage = UIImage(named: annotationIcon)!
-            annotationImage.scale(newWidth: 1.0)
-            pointAnnotation.image = .init(image: annotationImage, name: annotationIcon)
-//            pointAnnotation.image?.image.scale = 4.0
-            pointAnnotation.iconAnchor = .bottom
-            pointAnnotation.iconSize = 0.25
-            
-            vc.annotationManager.annotations.append(pointAnnotation)
-        }
-        
-        // Build property icon view
-        let width = max(80, SessionManager.shared.selectedProperty!.propertyName.count * 12 + 25)
-        let viewFromXib = Bundle.main.loadNibNamed("PropertyIconView", owner: self, options: nil)![0] as! PropertyIconView
-        viewFromXib.frame = CGRect(x: 0, y: 0, width: width, height: 50)
-
-        viewFromXib.propertyImageView.layer.shadowColor = UIColor.black.cgColor
-        viewFromXib.propertyImageView.layer.shadowOpacity = 0.2
-        viewFromXib.propertyImageView.layer.shadowOffset = .zero
-        viewFromXib.propertyImageView.layer.shadowRadius = 4
+        /// Build property icon view
+        let customView = PropertyIconView.instanceFromNib()
+        customView.configure(with: SessionManager.shared.selectedProperty!.propertyName)
 
         let rectShape = CAShapeLayer()
-        rectShape.bounds = viewFromXib.frame
-        rectShape.position = viewFromXib.center
-        rectShape.path = UIBezierPath(roundedRect: CGRectMake(0, 0, CGFloat(width - 30), viewFromXib.propertyMainView.bounds.height), byRoundingCorners: [.topRight, .bottomRight], cornerRadii: CGSize(width: 50, height: 50)).cgPath
-
-
-        viewFromXib.propertyMainView.layer.mask = rectShape
-        viewFromXib.propertyLabel.text = SessionManager.shared.selectedProperty!.propertyName
-        viewFromXib.propertyLabel.textColor = UIColor(cgColor: CustomColors.TorchGreen.cgColor!)
-        viewFromXib.propertyMainView.backgroundColor = UIColor.white
+        rectShape.bounds = customView.frame
+        rectShape.position = customView.center
+        rectShape.path = UIBezierPath(roundedRect: CGRectMake(0, 0, customView.propertyMainView.bounds.width, customView.propertyMainView.bounds.height), byRoundingCorners: [.topRight, .bottomRight], cornerRadii: CGSize(width: 50, height: 50)).cgPath
         
+        print("Creating rectshape: \(CGRectMake(0, 0, customView.propertyMainView.bounds.width, customView.propertyMainView.bounds.height))")
+
+
+        customView.propertyMainView.layer.mask = rectShape
+        
+        customView.layer.shadowColor = UIColor.black.cgColor
+        customView.layer.shadowOpacity = 0.2
+        customView.layer.shadowOffset = .zero
+        customView.layer.shadowRadius = 4
+        
+        customView.propertyMainView.layoutIfNeeded()
+        customView.propertyLabel.text = SessionManager.shared.selectedProperty!.propertyName
+        customView.propertyLabel.textColor = UIColor(cgColor: CustomColors.TorchGreen.cgColor!)
+        customView.propertyMainView.backgroundColor = UIColor.white
+        customView.configure(with: SessionManager.shared.selectedProperty!.propertyName)
+        print("Got width conf: \(customView.frame.width)")
         let propertyAnnotationOptions = ViewAnnotationOptions(
             geometry: Point(sessionManager.selectedProperty!.coordinate!),
-            width: CGFloat(max(80, SessionManager.shared.selectedProperty!.propertyName.count * 12 + 25)),
+            width: customView.frame.width,
             height: 50,
             allowOverlap: false,
-            anchor: .center
+            anchor: .left
         )
-        try? vc.mapView.viewAnnotations.add(viewFromXib, options: propertyAnnotationOptions)
+        try? vc.mapView.viewAnnotations.add(customView, options: propertyAnnotationOptions)
         
         vc.annotationManager.delegate = context.coordinator
     }
@@ -3532,21 +3519,25 @@ struct MapboxPlaceSensorViewWrapper: UIViewControllerRepresentable {
     func updateUIViewController(_ uiViewController: MapboxPlaceSensorViewController, context: Context) {
         if (self.moveToUserTapped) {
             DispatchQueue.main.async {                
-                var cameraOptions = CameraOptions(zoom: 15.0, bearing: 0.0, pitch: 0.0)
-                self.moveToUserTapped = false                
+                var cameraOptions = CameraOptions(padding: .init(top: -28, left: 0, bottom: self.mapOffset.height, right: 0), zoom: 15.0, bearing: 0.0, pitch: 0.0)
+                self.moveToUserTapped = false
                 cameraOptions.center = uiViewController.mapView.location.latestLocation?.coordinate
                 uiViewController.mapView.camera.fly(to: cameraOptions, duration: 0.1)
             }
         } else if (selectedDetector != nil && self.sensorTapped) {
-            var cameraOptions = CameraOptions(padding: .init(top: 0, left: 0, bottom: 200, right: 0), zoom: zoomLevel, bearing: 0.0, pitch: 0.0)
+            var cameraOptions = CameraOptions(padding: .init(top: 0, left: 0, bottom: self.mapOffset.height, right: 0), zoom: zoomLevel, bearing: 0.0, pitch: 0.0)
             if selectedDetector != nil {
                 cameraOptions.center = selectedDetector!.coordinate!
             }
+            uiViewController.mapView.camera.fly(to: cameraOptions, duration: 0.1)
+        } else if (uiViewController.mapView.cameraState.padding.bottom != self.mapOffset.height) {
+            var cameraOptions = CameraOptions(padding: .init(top: 0, left: 0, bottom: self.mapOffset.height, right: 0), zoom: zoomLevel, bearing: 0.0, pitch: 0.0)
             uiViewController.mapView.camera.fly(to: cameraOptions, duration: 0.1)
         }
         
         if self.needsLocationPin {
             uiViewController.pinImageView.isHidden = false
+            uiViewController.pinImageView.frame = CGRectMake(uiViewController.mapView.anchor.x - 30, uiViewController.mapView.anchor.y - 80, 60, 69)
         } else {
             uiViewController.pinImageView.isHidden = true
         }

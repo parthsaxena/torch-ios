@@ -35,8 +35,12 @@ struct AccountView: View {
         Group {
 //            let x = // print("pooppp: \(authenticationManager.authStateLoaded)")
             if !authenticationManager.authStateLoaded {
-                LoadingSplashScreen()
-            } else if authenticationManager.authState == .welcome {
+//                LoadingSplashScreen()
+//                    .ignoresSafeArea()
+                PropertiesView()
+                
+            } else 
+            if authenticationManager.authState == .welcome {
                 WelcomeView()
             } else if authenticationManager.authState == .login {
                 LoginView()

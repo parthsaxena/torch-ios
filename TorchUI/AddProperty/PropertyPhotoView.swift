@@ -207,6 +207,7 @@ struct PropertyPhotoView: View {
                         
                         var urlString = "\(imageApiUrl)\(self.propertyAddress)".addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)!
                         SessionManager.shared.newProperty?.propertyImage = urlString
+                        SessionManager.shared.newProperty?.loadingData = true
                         state = .promptInstallation
                         
                         SessionManager.shared.uploadNewProperty()

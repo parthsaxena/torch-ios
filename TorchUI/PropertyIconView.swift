@@ -12,6 +12,7 @@ class PropertyIconView: UIView {
     @IBOutlet weak var propertyImageView: UIImageView!
     @IBOutlet weak var propertyLabel: UILabel!
     @IBOutlet weak var propertyMainView: UIView!
+    @IBOutlet weak var widthConstraint: NSLayoutConstraint!
     var propertyName = ""
     
     static var instantiated = false
@@ -25,6 +26,22 @@ class PropertyIconView: UIView {
         super.init(coder: coder)
 //                commonInit()
     }
+    
+    func configure(with propertyName: String) {
+        self.propertyLabel.text = propertyName
+//        self.propertyLabel.adjustsFontSizeToFitWidth = true
+//        self.propertyLabel.numberOfLines = 1
+//        self.propertyLabel.sizeToFit()
+//        self.widthConstraint.constant = self.propertyLabel.frame.size.width
+
+        self.layoutIfNeeded() // Trigger layout update after changing content
+    }
+    
+    class func instanceFromNib() -> PropertyIconView {
+        let view = UINib(nibName: "PropertyIconView", bundle: nil).instantiate(withOwner: nil, options: nil)[0] as! PropertyIconView
+        return view
+    }
+        
     
     fileprivate func setupView() {
             // do your setup here

@@ -41,7 +41,7 @@ struct PlaceSensorView: View {
     
     @State var selectedSensor: Detector?
     
-//    @State var mapBottomOffset: CGFloat = 0.0
+    @State var mapOffset: CGSize = CGSize()
     @State var size: CGSize = CGSize()
     
     @State var pin: CLLocationCoordinate2D = CLLocationCoordinate2D()
@@ -73,7 +73,7 @@ struct PlaceSensorView: View {
             ZStack(alignment: .top) {
                 // Maps
                 ZStack {
-                    MapboxPlaceSensorViewWrapper(showDetectorDetails: $showDetectorDetails, selectedDetector: $selectedDetector, needsLocationPin: $needsLocationPin, annotations: $annotations, pin: $pin, moveToUserTapped: $moveToUserTapped, sensorTapped: $sensorTapped)
+                    MapboxPlaceSensorViewWrapper(mapOffset: $mapOffset, showDetectorDetails: $showDetectorDetails, selectedDetector: $selectedDetector, needsLocationPin: $needsLocationPin, annotations: $annotations, pin: $pin, moveToUserTapped: $moveToUserTapped, sensorTapped: $sensorTapped)
 //                    PlaceSensorViewControllerBridge(mapBottomOffset: $size.height, isConfirmingLocation: $isConfirmingLocation, markers: $markers, selectedMarker: $selectedMarker, selectedDetector: $selectedDetector, showDetectorDetails: $showDetectorDetails, detectors: sessionManager.selectedProperty!.detectors, onAnimationEnded: {
 //                        self.zoomInCenter = true
 //                    }, mapViewWillMove: { (isGesture) in
@@ -112,9 +112,9 @@ struct PlaceSensorView: View {
                     // Overlay
                     VStack {
                         if isConfirmingLocation {
-                            SensorConfirmLocationOverlayView(size: $size, markers: $markers, pin: $pin, selectedSensor: $selectedSensor, isConfirmingLocation: $isConfirmingLocation)
+                            SensorConfirmLocationOverlayView(mapOffset: $mapOffset, size: $size, markers: $markers, pin: $pin, selectedSensor: $selectedSensor, isConfirmingLocation: $isConfirmingLocation)
                         } else {
-                            SensorSetupOverlayView(size: $size, markers: $markers, sessionManager: sessionManager, isPresentingScanner: $isPresentingScanner, isConfirmingLocation: $isConfirmingLocation, selectedSensor: $selectedSensor, selectedDetector: $selectedDetector, sensorTapped: $sensorTapped, annotations: $annotations, pin: $pin)
+                            SensorSetupOverlayView(mapOffset: $mapOffset, size: $size, markers: $markers, sessionManager: sessionManager, isPresentingScanner: $isPresentingScanner, isConfirmingLocation: $isConfirmingLocation, selectedSensor: $selectedSensor, selectedDetector: $selectedDetector, sensorTapped: $sensorTapped, annotations: $annotations, pin: $pin)
                                 .sheet(isPresented: $isPresentingScanner) {
                                     VStack {
                                         HStack {
@@ -133,7 +133,7 @@ struct PlaceSensorView: View {
                                                 let impactMed = UIImpactFeedbackGenerator(style: .heavy)
                                                 impactMed.impactOccurred()
                                                 
-                                                // print("Got device EUI: \(result.string)")
+                                                 print("Got device EUI: \(result.string)")
                                                 isPresentingScanner = false
                                                 
                                                 // create detector model
@@ -211,10 +211,15 @@ struct PlaceSensorView: View {
                     let impactMed = UIImpactFeedbackGenerator(style: .medium)
                     impactMed.impactOccurred()
 
-                    // Upload new detectors & return to properties view
+                    // Upload new detectors & return to properties view 
+                    if SessionManager.shared.selectedPropertyIndex < SessionManager.shared.properties.count {
+                        SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].loadingData = true
+                    }
+                    SessionManager.shared.newProperty!.loadingData = true
                     SessionManager.shared.uploadNewDetectors()
                     dismiss()
 //                    SessionManager.shared.appState = .properties
+                    SessionManager.shared.newProperty = nil
                 }
                 
 
@@ -223,7 +228,10 @@ struct PlaceSensorView: View {
                     impactMed.impactOccurred()
 
 //                    SessionManager.shared.appState = .properties
+                    SessionManager.shared.newProperty!.detectors = []
+                    SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors = []
                     dismiss()
+                    SessionManager.shared.newProperty = nil
                 }
             }
         }
@@ -237,6 +245,7 @@ struct SensorSetupOverlayView: View {
     private let height = UIScreen.main.bounds.height
 //    let property: Property
         
+    @Binding var mapOffset: CGSize
     @Binding var size: CGSize
     @Binding var markers: [GMSMarker]
     @State var nextButtonColor: Color = Color(red: 0.18, green: 0.21, blue: 0.22)
@@ -295,27 +304,56 @@ struct SensorSetupOverlayView: View {
                     VStack {
                         // 1st row
                         var idx = 1
-                        HStack(spacing: 15.0) {
-//                            let x = // print("New detector count: \(sessionManager.newProperty!.detectors.count)")
-                            ForEach(Array(sessionManager.newProperty!.detectors.enumerated()), id: \.element) { idx, detector in
+                        if (SessionManager.shared.newProperty != nil) {
+                            HStack(spacing: 15.0) {
+                                //                            let x = // print("New detector count: \(sessionManager.newProperty!.detectors.count)")
+                                ForEach(Array(sessionManager.newProperty!.detectors.enumerated()), id: \.element) { idx, detector in
+                                    VStack(spacing: 7.0) {
+                                        ZStack {
+                                            let strokeColor = detector.coordinate == nil ? Color(red: 0.78, green: 0.81, blue: 0.82) : Color.clear
+                                            let bgColor = detector.coordinate == nil ? Color.clear : CustomColors.NormalSensorGray
+                                            let fontColor = detector.coordinate == nil ? Color(red: 0.78, green: 0.81, blue: 0.82) : Color(red: 0.45, green: 0.53, blue: 0.55)
+                                            //                                        let x = // print("UI coordinate: \(detector)")
+                                            Circle()
+                                                .stroke(strokeColor, lineWidth: 1)
+                                                .background(Circle().fill(bgColor))
+                                                .frame(width: 60.0, height: 60.0)
+                                            Text("\(idx + 1)")
+                                                .font(Font.custom("Manrope-Medium", size: 18.0))
+                                                .foregroundColor(fontColor)
+                                            Button {
+                                                // print("Clicked 1 sensor")
+                                                self.selectedSensor = detector
+                                                self.selectedDetector = detector
+                                                self.sensorTapped = true
+                                            } label: {
+                                                Circle()
+                                                    .fill(Color.clear)
+                                                    .frame(width: 60.0, height: 60.0)
+                                            }
+                                        }
+                                        
+                                        Circle()
+                                            .fill(self.selectedSensor!.id == detector.id ? Color.black : Color.clear)
+                                            .frame(width: 5, height: 5)
+                                    }
+                                }
+                                
+                                // Add sensor button
                                 VStack(spacing: 7.0) {
                                     ZStack {
-                                        let strokeColor = detector.coordinate == nil ? Color(red: 0.78, green: 0.81, blue: 0.82) : Color.clear
-                                        let bgColor = detector.coordinate == nil ? Color.clear : CustomColors.NormalSensorGray
-                                        let fontColor = detector.coordinate == nil ? Color(red: 0.78, green: 0.81, blue: 0.82) : Color(red: 0.45, green: 0.53, blue: 0.55)
-//                                        let x = // print("UI coordinate: \(detector)")
                                         Circle()
-                                            .stroke(strokeColor, lineWidth: 1)
-                                            .background(Circle().fill(bgColor))
+                                            .stroke(Color(red: 0.78, green: 0.81, blue: 0.82), lineWidth: 1)
+                                            .background(Circle().fill(Color.clear))
                                             .frame(width: 60.0, height: 60.0)
-                                        Text("\(idx + 1)")
-                                            .font(Font.custom("Manrope-Medium", size: 18.0))
-                                            .foregroundColor(fontColor)
+                                        Image(systemName: "plus")
+                                            .foregroundColor(Color(red: 0.78, green: 0.81, blue: 0.82))
+                                            .font(Font.system(size: 24.0))
                                         Button {
-                                            // print("Clicked 1 sensor")
-                                            self.selectedSensor = detector
-                                            self.selectedDetector = detector
-                                            self.sensorTapped = true
+                                            let impactMed = UIImpactFeedbackGenerator(style: .medium)
+                                            impactMed.impactOccurred()
+                                            
+                                            isPresentingScanner = true
                                         } label: {
                                             Circle()
                                                 .fill(Color.clear)
@@ -324,42 +362,14 @@ struct SensorSetupOverlayView: View {
                                     }
                                     
                                     Circle()
-                                        .fill(self.selectedSensor!.id == detector.id ? Color.black : Color.clear)
+                                        .fill(Color.clear)
                                         .frame(width: 5, height: 5)
                                 }
+                                
+                                Spacer()
                             }
-                            
-                            // Add sensor button
-                            VStack(spacing: 7.0) {
-                                ZStack {
-                                    Circle()
-                                        .stroke(Color(red: 0.78, green: 0.81, blue: 0.82), lineWidth: 1)
-                                        .background(Circle().fill(Color.clear))
-                                        .frame(width: 60.0, height: 60.0)
-                                    Image(systemName: "plus")
-                                        .foregroundColor(Color(red: 0.78, green: 0.81, blue: 0.82))
-                                        .font(Font.system(size: 24.0))
-                                    Button {
-                                        let impactMed = UIImpactFeedbackGenerator(style: .medium)
-                                        impactMed.impactOccurred()
-                                        
-                                        isPresentingScanner = true
-                                    } label: {
-                                        Circle()
-                                            .fill(Color.clear)
-                                            .frame(width: 60.0, height: 60.0)
-                                    }
-                                }
-
-                                Circle()
-                                    .fill(Color.clear)
-                                    .frame(width: 5, height: 5)
-                            }
-                            
-                            Spacer()
+                            .padding(.horizontal, 15.0)
                         }
-                        .padding(.horizontal, 15.0)
-                        
                         Spacer()
                             .frame(height: 20.0)
                         
@@ -463,8 +473,20 @@ struct SensorSetupOverlayView: View {
 //            .frame(width: width, height: 2.2 * height / 5)
             .fixedSize(horizontal: false, vertical: true)
             .ignoresSafeArea()
+//            .overlay(GeometryReader { geo in
+//                Rectangle().fill(Color.clear).onAppear { self.size = geo.size }
+//            })
             .overlay(GeometryReader { geo in
-                Rectangle().fill(Color.clear).onAppear { self.size = geo.size }
+                Rectangle().fill(Color.clear)
+                    .onAppear {
+                        self.size = geo.size
+                        self.mapOffset = geo.size
+                        print("DESIRE0 \(geo.size)")
+                    }.onChange(of: geo.size) { updatedSize in
+                        self.size = updatedSize
+                        self.mapOffset = geo.size
+                        print("DESIRE1 \(geo.size)")
+                    }
             })
         }
     }
@@ -477,6 +499,7 @@ struct SensorConfirmLocationOverlayView: View {
     private let height = UIScreen.main.bounds.height
 //    let property: Property
         
+    @Binding var mapOffset: CGSize
     @Binding var size: CGSize
     @Binding var markers: [GMSMarker]
     @Binding var pin: CLLocationCoordinate2D
@@ -512,6 +535,7 @@ struct SensorConfirmLocationOverlayView: View {
                             Button(action: {
                                 let impactMed = UIImpactFeedbackGenerator(style: .medium)
                                 impactMed.impactOccurred()
+//                                SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].loadingData = true
                                 
                                 sessionManager.setDetectorCoordinate(detector: selectedSensor!, coordinate: self.pin)
                                 selectedSensor?.coordinate = self.pin
@@ -663,10 +687,21 @@ struct SensorConfirmLocationOverlayView: View {
 //            .frame(width: width, height: 2.2 * height / 5)
             .fixedSize(horizontal: false, vertical: true)
             .ignoresSafeArea()
+//            .overlay(GeometryReader { geo in
+//                Rectangle().fill(Color.clear).onAppear {
+////                    self.size = geo.size
+//                }
+//            })
             .overlay(GeometryReader { geo in
-                Rectangle().fill(Color.clear).onAppear {
-//                    self.size = geo.size
-                }
+                Rectangle().fill(Color.clear)
+                    .onAppear {
+                        self.size = geo.size
+                        self.mapOffset = geo.size
+                        print("DESIRE \(geo.size)")
+                    }.onChange(of: geo.size) { updatedSize in
+                        self.size = updatedSize
+                        self.mapOffset = geo.size
+                    }
             })
         }
     }

@@ -14,7 +14,7 @@ struct Detector: Hashable, Identifiable  {
     let deviceName: String
     var deviceBattery: Double
     
-    var measurements: [String: String] = [:]
+    var measurements: [String: String] = ["fire_rating":"80"]
     var coordinate: CLLocationCoordinate2D?
     var threat: Threat = Threat.Green
     var spectralStatus: Threat = Threat.Green
@@ -26,6 +26,7 @@ struct Detector: Hashable, Identifiable  {
     var connected: Bool = true
     
     var lastTimestamp: Date = Date()
+    var isNewlyInstalled: Bool = false
 }
 
 extension CLLocationCoordinate2D: Hashable {

@@ -33,6 +33,7 @@ final class SessionManager: ObservableObject {
     @Published var selectedDetectorIndex = 0
     
     @Published var newProperty: Property?
+//    @Published var addingNewDetector: Property?
     
     @Published var appState: AppState = .properties
     
@@ -45,6 +46,9 @@ final class SessionManager: ObservableObject {
     private let RED_THRESHOLD = 80
     private let YELLOW_THRESHOLD = 60
     @Published var unparsedProperties = 0
+    
+    @Published var deletedDetectors: Set<String> = []
+    @Published var deletedProperties: Set<String> = []
     
     @Published var loadingProperties = [
         Property(id: "0", propertyName: "House in Napa", propertyAddress: "2237 Kamp Court", propertyImage: ""),
@@ -152,9 +156,20 @@ final class SessionManager: ObservableObject {
                 // print("[LoadUserProperties] Couldn't extract result")
                 DispatchQueue.main.async {
                     print("couldn't parse:", data)
+                    guard let resultString = data["result"] as? String else {
+                        self.propertiesLoaded = true
+                        return
+                    }
+                    
+                    if resultString.contains("properties not found") {
+                        self.properties = []
+                        self.alerts = []
+                    }
+                    
 //                    self.properties = []
 //                    self.alerts = []
                     self.propertiesLoaded = true
+                    self.loadUserProperties()
                 }
                 return
             }
@@ -163,29 +178,38 @@ final class SessionManager: ObservableObject {
                 // print("[LoadUserProperties] Couldn't extract properties")
                 DispatchQueue.main.async {
                     print("couldn't parse:", data)
+//                    if data["res"]
 //                    self.properties = []
 //                    self.alerts = []
                     self.propertiesLoaded = true
+                    self.loadUserProperties()
                 }
                 return
             }
             
-            print("Got res: \(properties)")
+//            print("Got res: \(properties)")
             
             if self.firstTimeLoaded && self.properties.count == properties.count {
                 self.updateDevices(properties: properties)
             } else {
-                
-                self.clearProperties()
-                for (id, property) in properties {
-                    // print("Fresh Property: \(id) \(property)")
-                    self.parseProperty(id: id, property: property)
-                }
-                
-                self.unparsedProperties = properties.count
-                DispatchQueue.main.async {
-                    self.propertiesLoaded = true
-                    self.firstTimeLoaded = true
+                if (self.newProperty == nil) {
+                    print("DIFF PROPERTIES, \(self.properties.count), \(properties.count), \(self.properties), \(properties)")
+                    self.clearProperties()
+                    var deletedProperties = 0
+                    for (id, property) in properties {
+                        // print("Fresh Property: \(id) \(property)")
+                        if (self.deletedProperties.contains(id)) {
+                            deletedProperties += 1
+                            continue
+                        }
+                        self.parseProperty(id: id, property: property)
+                    }
+                    
+                    self.unparsedProperties = properties.count - deletedProperties
+                    DispatchQueue.main.async {
+                        self.propertiesLoaded = true
+                        self.firstTimeLoaded = true
+                    }
                 }
             }
             
@@ -226,6 +250,9 @@ final class SessionManager: ObservableObject {
             self.newProperty!.id = property_id
 //            // print("Set new property id: \(self.newProperty!.id) from \(self)")
             self.properties.append(self.newProperty!)
+            self.properties[self.properties.count - 1].loadingData = true
+            self.selectedPropertyIndex = self.properties.count - 1
+            print("Set property index: \(self.selectedPropertyIndex) \(self.properties.count)")
         })
         
         // Send request through socket
@@ -240,7 +267,15 @@ final class SessionManager: ObservableObject {
         var yellowAlert: AlertModel? = nil
         var alertsAdded: Bool = false
         
+        print("Got updated properties: \(properties.keys)")
+        
         for (id, new_property) in properties {
+            print("Checking property \(id), del \(self.deletedProperties)")
+            if self.deletedProperties.contains(id) {
+                print("Ignoring new property \(id)")
+                continue
+            }
+            
             for i in 0..<self.properties.count {
 //            for existing_property in self.properties {
                 if self.properties[i].id == id {
@@ -249,7 +284,7 @@ final class SessionManager: ObservableObject {
                         return
                     }
                                         
-                    var propertyStatus = "All systems are normal"
+                    var propertyStatus = "All sensors are normal"
                     
 //                    print("Property before: \(self.properties[i])")
                     for j in 0..<self.properties[i].detectors.count {
@@ -383,9 +418,10 @@ final class SessionManager: ObservableObject {
                             }
                         }
                         
-                        if !flag {
-                            self.properties[i].detectors.remove(at: j)
-                        }
+//                        if !flag {
+//                            print("removing unneeded detecto")
+//                            self.properties[i].detectors.remove(at: j)
+//                        }
                     }
 //                    print("Property after: \(self.properties[i])")
 //                    print("Timestamp map: \(self.latestTimestampDict)")
@@ -401,6 +437,13 @@ final class SessionManager: ObservableObject {
                         
                         if !found {
                             let deviceID = new_device["device_id"] as! String
+                            
+                            if (self.deletedDetectors.contains(deviceID)) {
+                                continue
+                            } else {
+                                print("added fresh detector, \(deviceID), \(self.deletedDetectors)")
+                            }
+                            
                             let deviceName = new_device["device_name"] as! String
                             let deviceMeasurements = new_device["measurements"] as! [String: Any]
                             let propertyAddress = new_device["property_address"] as! String
@@ -506,7 +549,7 @@ final class SessionManager: ObservableObject {
                             detector.smokeStatus = smokeStatus
                             detector.thermalStatus = thermalStatus
                             detector.coordinate = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
-                            detector.sensorIdx = self.properties[i].detectors.count
+                            detector.sensorIdx = self.properties[i].detectors.count + 1
                             detector.deviceBattery = deviceBattery
 //                            detector.lastTimestamp = lastTimestamp
                             self.latestTimestampDict[deviceID] = lastTimestamp
@@ -590,6 +633,8 @@ final class SessionManager: ObservableObject {
                             self.alerts.append(yellowAlert!)
                         }
                     }
+                    
+                    self.properties[i].loadingData = false
                 }
                 
                 redAlert = nil
@@ -600,7 +645,7 @@ final class SessionManager: ObservableObject {
         for i in 0..<self.properties.count {
             var flag = false
             for (id, new_property) in properties {
-                if (id == self.properties[i].id) {
+                if (i < self.properties.count && id == self.properties[i].id) {
                     flag = true
                     break
                 }
@@ -617,6 +662,8 @@ final class SessionManager: ObservableObject {
     }
     
     func uploadNewDetectors() {
+//        SessionManager.shared.properties[selectedPropertyIndex].loadingData = true
+        self.newProperty?.loadingData = true
         for newDetector in self.newProperty!.detectors {
             self.registerDevice(property: self.newProperty!, detector: newDetector)
         }
@@ -639,6 +686,10 @@ final class SessionManager: ObservableObject {
         
         // Send request through socket
         WebSocketManager.shared.sendData(socketRequest: req)
+        
+        self.deletedProperties.insert(property_id)
+        self.properties.remove(at: self.selectedPropertyIndex)
+        self.selectedPropertyIndex = min(0, self.properties.count - 1)
     }
     
     func deleteDetector() {
@@ -647,6 +698,13 @@ final class SessionManager: ObservableObject {
         var property_id = self.properties[self.selectedPropertyIndex].id
         var device_id = self.properties[self.selectedPropertyIndex].detectors[self.selectedDetectorIndex].id
         var user_id = AuthenticationManager.shared.authUser.userId
+        
+        DispatchQueue.main.async {
+            self.deletedDetectors.insert(device_id)
+            print("deleting detector: \(device_id)")
+            self.selectedDetectorIndex -= 1
+            self.properties[self.selectedPropertyIndex].detectors.remove(at: self.selectedDetectorIndex + 1)
+        }
         
         let req = SocketRequest(route: "deleteDevice",
                                 data: [
@@ -697,7 +755,7 @@ final class SessionManager: ObservableObject {
             
             detector.sensorIdx = property.detectors.count
 //            self.properties[self.properties.count - 1].detectors.append(detector)
-            self.firstTimeLoaded = false
+//            self.firstTimeLoaded = false
             self.loadUserProperties()
         })
         
@@ -747,7 +805,7 @@ final class SessionManager: ObservableObject {
             var sensorIdx = 0
             var redAlert: AlertModel? = nil
             var yellowAlert: AlertModel? = nil
-            var propertyStatus = "All systems are normal"
+            var propertyStatus = "All sensors are normal"
             
             for device in devices {
                 sensorIdx += 1

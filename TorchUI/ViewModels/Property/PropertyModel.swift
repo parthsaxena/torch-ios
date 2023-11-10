@@ -19,7 +19,9 @@ struct Property: Hashable, Identifiable, Equatable {
     var detectors: [Detector] = []
     var threat: Threat = Threat.Green
     
-    var propertyDescription: String = ""        
+    var propertyDescription: String = ""  
+    
+    var loadingData: Bool = false
 }
 
 struct SearchResult: Hashable, Identifiable {

@@ -57,6 +57,8 @@ struct PropertyView: View, Equatable {
     var loading = false
     
     var body: some View {
+        let x = print("Property loading: \(self.property.loadingData)")
+        
         HStack {
             if loading {
                 Rectangle()
@@ -113,7 +115,7 @@ struct PropertyView: View, Equatable {
                 }
                 
                 if loading {
-                    Text("All systems are normal")
+                    Text("All sensors are normal")
                       .font(Font.custom("Manrope-Medium", size: 14))
                       .foregroundColor(Color(red: 0.56, green: 0.63, blue: 0.64))
                       .frame(maxWidth: .infinity, minHeight: 20, maxHeight: 20, alignment: .topLeading)
@@ -136,66 +138,70 @@ struct PropertyView: View, Equatable {
             let sensorSize = 14.0
             
             if !loading {
-                VStack(spacing: sensorSpacing) {
-                    // row 1
-                    HStack(spacing: sensorSpacing) {
-                        ForEach(0..<5, id: \.self) { i in
-                            if i < property.detectors.count {
-                                if property.detectors[i].threat == Threat.Red {
-                                    Circle().fill(CustomColors.TorchRed).frame(width: 14, height: 14)
-                                } else if property.detectors[i].threat == Threat.Yellow {
-                                    Circle().fill(CustomColors.WarningYellow).frame(width: 14, height: 14)
+                if self.property.loadingData {
+                    ProgressView()
+                } else {
+                    VStack(spacing: sensorSpacing) {
+                        // row 1
+                        HStack(spacing: sensorSpacing) {
+                            ForEach(0..<5, id: \.self) { i in
+                                if i < property.detectors.count {
+                                    if property.detectors[i].threat == Threat.Red {
+                                        Circle().fill(CustomColors.TorchRed).frame(width: 14, height: 14)
+                                    } else if property.detectors[i].threat == Threat.Yellow {
+                                        Circle().fill(CustomColors.WarningYellow).frame(width: 14, height: 14)
+                                    } else {
+                                        Circle().fill(colorScheme == .dark ? Color(red: 44/255,green: 47/255, blue: 51/255) : CustomColors.NormalSensorGray).frame(width: 14, height: 14)
+                                    }
                                 } else {
-                                    Circle().fill(colorScheme == .dark ? Color(red: 44/255,green: 47/255, blue: 51/255) : CustomColors.NormalSensorGray).frame(width: 14, height: 14)
+                                    Circle().fill(Color.clear).frame(width: 14, height: 14)
                                 }
-                            } else {
-                                Circle().fill(Color.clear).frame(width: 14, height: 14)
                             }
+                            Spacer()
                         }
-                        Spacer()
-                    }
-                    .environment(\.layoutDirection, .rightToLeft)
-                    
-                    // row 2
-                    HStack(spacing: sensorSpacing) {
-                        ForEach(5..<10, id: \.self) { i in
-                            if i < property.detectors.count {
-                                if property.detectors[i].threat == Threat.Red {
-                                    Circle().fill(CustomColors.TorchRed).frame(width: 14, height: 14)
-                                } else if property.detectors[i].threat == Threat.Yellow {
-                                    Circle().fill(CustomColors.WarningYellow).frame(width: 14, height: 14)
+                        .environment(\.layoutDirection, .rightToLeft)
+                        
+                        // row 2
+                        HStack(spacing: sensorSpacing) {
+                            ForEach(5..<10, id: \.self) { i in
+                                if i < property.detectors.count {
+                                    if property.detectors[i].threat == Threat.Red {
+                                        Circle().fill(CustomColors.TorchRed).frame(width: 14, height: 14)
+                                    } else if property.detectors[i].threat == Threat.Yellow {
+                                        Circle().fill(CustomColors.WarningYellow).frame(width: 14, height: 14)
+                                    } else {
+                                        Circle().fill(colorScheme == .dark ? Color(red: 44/255,green: 47/255, blue: 51/255) : CustomColors.NormalSensorGray).frame(width: 14, height: 14)
+                                    }
                                 } else {
-                                    Circle().fill(colorScheme == .dark ? Color(red: 44/255,green: 47/255, blue: 51/255) : CustomColors.NormalSensorGray).frame(width: 14, height: 14)
+                                    Circle().fill(Color.clear).frame(width: 14, height: 14)
                                 }
-                            } else {
-                                Circle().fill(Color.clear).frame(width: 14, height: 14)
                             }
+                            Spacer()
                         }
-                        Spacer()
-                    }
-                    .environment(\.layoutDirection, .rightToLeft)
-                    
-                    // row 3
-                    HStack(spacing: sensorSpacing) {
-                        ForEach(10..<15, id: \.self) { i in
-                            if i < property.detectors.count {
-                                if property.detectors[i].threat == Threat.Red {
-                                    Circle().fill(CustomColors.TorchRed).frame(width: 14, height: 14)
-                                } else if property.detectors[i].threat == Threat.Yellow {
-                                    Circle().fill(CustomColors.WarningYellow).frame(width: 14, height: 14)
+                        .environment(\.layoutDirection, .rightToLeft)
+                        
+                        // row 3
+                        HStack(spacing: sensorSpacing) {
+                            ForEach(10..<15, id: \.self) { i in
+                                if i < property.detectors.count {
+                                    if property.detectors[i].threat == Threat.Red {
+                                        Circle().fill(CustomColors.TorchRed).frame(width: 14, height: 14)
+                                    } else if property.detectors[i].threat == Threat.Yellow {
+                                        Circle().fill(CustomColors.WarningYellow).frame(width: 14, height: 14)
+                                    } else {
+                                        Circle().fill(colorScheme == .dark ? Color(red: 44/255,green: 47/255, blue: 51/255) : CustomColors.NormalSensorGray).frame(width: 14, height: 14)
+                                    }
                                 } else {
-                                    Circle().fill(colorScheme == .dark ? Color(red: 44/255,green: 47/255, blue: 51/255) : CustomColors.NormalSensorGray).frame(width: 14, height: 14)
+                                    Circle().fill(Color.clear).frame(width: 14, height: 14)
                                 }
-                            } else {
-                                Circle().fill(Color.clear).frame(width: 14, height: 14)
                             }
+                            Spacer()
                         }
-                        Spacer()
+                        .environment(\.layoutDirection, .rightToLeft)
                     }
-                    .environment(\.layoutDirection, .rightToLeft)
+                    .frame(maxWidth: sensorSize * 5 + 4 * sensorSpacing)
+                    .padding(.trailing, 10)
                 }
-                .frame(maxWidth: sensorSize * 5 + 4 * sensorSpacing)
-                .padding(.trailing, 10)
             }
         }
     }

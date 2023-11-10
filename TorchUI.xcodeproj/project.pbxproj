@@ -10,6 +10,8 @@
 		063E3AEDB341E890B74EBA44 /* Pods_TorchUI_TorchUIUITests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0C19AF3ABE563F725FAD2649 /* Pods_TorchUI_TorchUIUITests.framework */; };
 		0E2DB57146C4AC62F707E171 /* Pods_TorchUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BCA61948B1D99B51DFBD2E8D /* Pods_TorchUI.framework */; };
 		7264CE919C89CB52F285A91A /* amplifyconfiguration.json in Resources */ = {isa = PBXBuildFile; fileRef = DC238A696F0F1B1FB1829220 /* amplifyconfiguration.json */; };
+		8B2534D72AFB375900461AAE /* DetectorIconView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B2534D62AFB375900461AAE /* DetectorIconView.swift */; };
+		8B2534D92AFC587400461AAE /* DetectorIconView.xib in Resources */ = {isa = PBXBuildFile; fileRef = 8B2534D82AFC587400461AAE /* DetectorIconView.xib */; };
 		8B69B8542A7DF1FE001F4F79 /* AuthenticationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B69B8532A7DF1FE001F4F79 /* AuthenticationManager.swift */; };
 		8B69B8562A7DF338001F4F79 /* WebSocketManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B69B8552A7DF338001F4F79 /* WebSocketManager.swift */; };
 		8B69B8582A7DFE6B001F4F79 /* AccountVerificationCodeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B69B8572A7DFE6B001F4F79 /* AccountVerificationCodeView.swift */; };
@@ -97,6 +99,8 @@
 		0C19AF3ABE563F725FAD2649 /* Pods_TorchUI_TorchUIUITests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_TorchUI_TorchUIUITests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		3543DCA965350F51F6C6E4E1 /* Pods-TorchUI-TorchUIUITests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-TorchUI-TorchUIUITests.debug.xcconfig"; path = "Target Support Files/Pods-TorchUI-TorchUIUITests/Pods-TorchUI-TorchUIUITests.debug.xcconfig"; sourceTree = "<group>"; };
 		5F678EE1FE285173C6694EAF /* Pods-TorchUITests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-TorchUITests.release.xcconfig"; path = "Target Support Files/Pods-TorchUITests/Pods-TorchUITests.release.xcconfig"; sourceTree = "<group>"; };
+		8B2534D62AFB375900461AAE /* DetectorIconView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetectorIconView.swift; sourceTree = "<group>"; };
+		8B2534D82AFC587400461AAE /* DetectorIconView.xib */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.xib; path = DetectorIconView.xib; sourceTree = "<group>"; };
 		8B4A07AE2AE1FB81005731F6 /* ZXCodeTextfield */ = {isa = PBXFileReference; lastKnownFileType = text; path = ZXCodeTextfield; sourceTree = SOURCE_ROOT; };
 		8B69B8532A7DF1FE001F4F79 /* AuthenticationManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AuthenticationManager.swift; sourceTree = "<group>"; };
 		8B69B8552A7DF338001F4F79 /* WebSocketManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebSocketManager.swift; sourceTree = "<group>"; };
@@ -253,7 +257,9 @@
 				8B69B8532A7DF1FE001F4F79 /* AuthenticationManager.swift */,
 				8BFF26A52A7AE7BD00FDCBD9 /* Login */,
 				8BDE0B732A58BD6B007AD0FD /* PropertyIconView.xib */,
+				8B2534D82AFC587400461AAE /* DetectorIconView.xib */,
 				8BDE0B752A58C026007AD0FD /* PropertyIconView.swift */,
+				8B2534D62AFB375900461AAE /* DetectorIconView.swift */,
 				8BF7FC912A4D1BA2005D1160 /* ViewModels */,
 				8BF7FC8C2A4D1593005D1160 /* TabBar */,
 				8BF7FC7D2A4D14C2005D1160 /* Fonts */,
@@ -522,6 +528,7 @@
 				8BF7FC872A4D14D0005D1160 /* Manrope-Light.ttf in Resources */,
 				8BF7FC8A2A4D14D0005D1160 /* Manrope-Medium.ttf in Resources */,
 				8BF7FC892A4D14D0005D1160 /* Manrope-Regular.ttf in Resources */,
+				8B2534D92AFC587400461AAE /* DetectorIconView.xib in Resources */,
 				FADFD6D29C0D959575FAAFCB /* awsconfiguration.json in Resources */,
 				7264CE919C89CB52F285A91A /* amplifyconfiguration.json in Resources */,
 			);
@@ -710,6 +717,7 @@
 				8B8FCD002A57AD9D000D23CA /* SessionManager.swift in Sources */,
 				8BDE0B7A2A5B9708007AD0FD /* AddPropertySheetView.swift in Sources */,
 				8BF7FC9C2A577AAE005D1160 /* AppDelegate.swift in Sources */,
+				8B2534D72AFB375900461AAE /* DetectorIconView.swift in Sources */,
 				8BADE2D02A577C6C00BAC03F /* MapViewControllerBridge.swift in Sources */,
 				8B78C42D2AAAA76F00BC2F10 /* HeadingView.swift in Sources */,
 				8B88C9002A70903B008B90A2 /* PlaceSensorMapViewController.swift in Sources */,
@@ -885,7 +893,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 6;
 				DEVELOPMENT_ASSET_PATHS = "\"TorchUI/Preview Content\"";
 				DEVELOPMENT_TEAM = H3MR536ERJ;
 				ENABLE_PREVIEWS = YES;
@@ -897,13 +905,14 @@
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreenStoryboard.storyboard;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_UIUserInterfaceStyle = Light;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.5;
+				MARKETING_VERSION = 1.6;
 				PRODUCT_BUNDLE_IDENTIFIER = com.torchsensors.TorchUI;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -923,7 +932,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 6;
 				DEVELOPMENT_ASSET_PATHS = "\"TorchUI/Preview Content\"";
 				DEVELOPMENT_TEAM = H3MR536ERJ;
 				ENABLE_PREVIEWS = YES;
@@ -935,13 +944,14 @@
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreenStoryboard.storyboard;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_UIUserInterfaceStyle = Light;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.5;
+				MARKETING_VERSION = 1.6;
 				PRODUCT_BUNDLE_IDENTIFIER = com.torchsensors.TorchUI;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";

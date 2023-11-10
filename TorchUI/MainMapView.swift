@@ -35,7 +35,8 @@ struct MainMapView: View {
     @State var selectedMarker: GMSMarker?
     
     @State var mapOffset: CGSize = CGSize()
-    @State var size: CGSize = CGSize()
+    @State var propertyOverlaySize: CGSize = CGSize()
+    @State var detectorOverlaySize: CGSize = CGSize()
     
     @State private var dragOffset = CGSize.zero
     
@@ -60,7 +61,8 @@ struct MainMapView: View {
     @State var showingDeleteDetectorOptions: Bool = false
     var combinedBinding: Binding<Bool> {
             Binding(
-                get: { let x = print("BIND:\(self.showingDeletePropertyOptions || self.showingDeleteDetectorOptions)");
+                get: {
+//                    let x = print("BIND:\(self.showingDeletePropertyOptions || self.showingDeleteDetectorOptions)");
                     return self.showingDeletePropertyOptions || self.showingDeleteDetectorOptions },
                 set: { newValue in
                     // Decide how you want to handle the set. For this example, I'll set both states.
@@ -94,100 +96,268 @@ struct MainMapView: View {
 //                    }
 //                })
 //                MapboxMap(zoomLevel: $zoomLevel)
-                MapboxMapViewWrapper(showDetectorDetails: $showDetectorDetails, zoomLevel: $zoomLevel, selectedDetectorIndex: $selectedDetectorIndex, annotations: $annotations, pin: self.$pin, needsLocationPin: $needsLocationPin, sensorTapped: $sensorTapped, moveToUserTapped: $moveToUserTapped, zoomChanged: $zoomChanged)
+                MapboxMapViewWrapper(showDetectorDetails: $showDetectorDetails, zoomLevel: $zoomLevel, selectedDetectorIndex: $selectedDetectorIndex, annotations: $annotations, pin: self.$pin, needsLocationPin: $needsLocationPin, sensorTapped: $sensorTapped, moveToUserTapped: $moveToUserTapped, zoomChanged: $zoomChanged, mapOffset: $mapOffset.height, dragOffset: $dragOffset)
                 .ignoresSafeArea()
                 .animation(.easeIn)
 //                .background(Color(red: 254.0/255.0, green: 1, blue: 220.0/255.0))
                 
-                if (self.newDetector != nil) {
-                    ZStack {
-                        VStack {
-                            Spacer()
-                            
-//                            Image("Pin")
-//                                .resizable()
-//                                .frame(width: 60, height: 69)
-//                                .padding(.bottom, 69 + 20)
-                            
-                            Spacer()
-                        }
-                        .padding(.bottom, self.size.height)
-                    }
-                }
+//                if (self.newDetector != nil) {
+//                    ZStack {
+//                        VStack {
+//                            Spacer()
+//                            
+////                            Image("Pin")
+////                                .resizable()
+////                                .frame(width: 60, height: 69)
+////                                .padding(.bottom, 69 + 20)
+//                            
+//                            Spacer()
+//                        }
+//                        .padding(.bottom, self.size.height)
+//                    }
+//                }
                     
                 let DETECTOR_MIN_OFFSET = 50.0
                 let PROPERTY_MIN_OFFSET = 75.0
                 let THRESHOLD = 150.0
-                let ANIMATION_DURATION = 0.1
+                let ANIMATION_DURATION = 2.0
+                let slideTransition: AnyTransition = AnyTransition.move(edge: .bottom)
+
                 
-                // Overlay
-                if showDetectorDetails && !hideOverlay {
-//                    VStack {
-                    let x = print("chhh", SessionManager.shared.properties, "ooo", SessionManager.shared.selectedPropertyIndex)
-                    DetectorDetailOverlayView(size: $size, mapOffset: $mapOffset, detector: SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors[SessionManager.shared.selectedDetectorIndex], sessionManager: sessionManager, showingDeleteDetectorOptions: $showingDeleteDetectorOptions)
-                        .offset(x: 0, y: self.dragOffset.height)
+                if !isConfirmingLocation {
+                    DetectorDetailOverlayView(size: $detectorOverlaySize, mapOffset: $mapOffset, sessionManager: sessionManager, showingDeleteDetectorOptions: $showingDeleteDetectorOptions, showDetectorDetails: $showDetectorDetails, dragOffset: $dragOffset)
+                        .offset(x: 0, y: (!showDetectorDetails) ? UIScreen.main.bounds.height : self.dragOffset.height)
                         .gesture(
                             DragGesture()
                                 .onChanged { gesture in
-                                    print("Gesture: \(gesture.translation), size: \(self.size)")
-//                                    if gesture.translation.height <= self.size.height && gesture.translation.height > 0 {
-//                                        self.dragOffset = gesture.translation
-//                                        self.mapOffset.height = self.size.height gesture.translation.height
-//                                    }
-                                    if gesture.translation.height < 0 && self.dragOffset.height > 0 {
-                                        print("Dragging up")
-                                        self.dragOffset.height = (self.size.height - DETECTOR_MIN_OFFSET) - fabs(gesture.translation.height)
-                                        self.mapOffset.height = DETECTOR_MIN_OFFSET + fabs(gesture.translation.height)
-                                    } else if gesture.translation.height > 0 && gesture.translation.height <= self.size.height {
-                                        print("Dragging down")
-                                        self.dragOffset = gesture.translation
-                                        self.mapOffset.height = (self.size.height - gesture.translation.height)
+                                    if showDetectorDetails {
+                                        print("Gesture: \(gesture.translation), size: \(self.detectorOverlaySize)")
+                                        //                                    if gesture.translation.height <= self.size.height && gesture.translation.height > 0 {
+                                        //                                        self.dragOffset = gesture.translation
+                                        //                                        self.mapOffset.height = self.size.height gesture.translation.height
+                                        //                                    }
+                                        if gesture.translation.height < 0 && self.dragOffset.height > 0 {
+                                            print("Dragging up")
+                                            self.dragOffset.height = (self.detectorOverlaySize.height - DETECTOR_MIN_OFFSET) - fabs(gesture.translation.height)
+                                            self.mapOffset.height = DETECTOR_MIN_OFFSET + fabs(gesture.translation.height)
+                                        } else if gesture.translation.height > 0 && gesture.translation.height <= self.detectorOverlaySize.height {
+                                            print("Dragging down")
+                                            self.dragOffset = gesture.translation
+                                            self.mapOffset.height = (self.detectorOverlaySize.height - gesture.translation.height)
+                                        }
                                     }
                                 }
                                 .onEnded { _ in
-                                    if self.dragOffset.height + THRESHOLD > self.size.height {
-                                        print("Threshold")//
-                                        withAnimation(.easeIn(duration: ANIMATION_DURATION)) {
-                                            self.dragOffset.height = self.size.height - DETECTOR_MIN_OFFSET
-                                            self.mapOffset.height = DETECTOR_MIN_OFFSET
-                                        }
-                                        
-                                    } else {
-                                        withAnimation(.easeIn(duration: ANIMATION_DURATION)) {
-                                            self.dragOffset = .zero
-                                            self.mapOffset.height = (self.size.height)
+                                    if showDetectorDetails {
+                                        if self.dragOffset.height + THRESHOLD > self.detectorOverlaySize.height {
+                                            print("Threshold")//
+                                            withAnimation(.easeIn(duration: ANIMATION_DURATION)) {
+                                                self.dragOffset.height = self.detectorOverlaySize.height - DETECTOR_MIN_OFFSET
+                                                self.mapOffset.height = DETECTOR_MIN_OFFSET
+                                            }
+                                            
+                                        } else {
+                                            print("Threshold1")
+                                            withAnimation(.easeIn(duration: ANIMATION_DURATION)) {
+                                                self.dragOffset = .zero
+                                                self.mapOffset.height = (self.detectorOverlaySize.height)
+                                            }
                                         }
                                     }
                                 }
                         )
+                        .transition(slideTransition)
                         .confirmationDialog("Select a color", isPresented: combinedBinding, titleVisibility: .hidden) {
                             Button(showingDeletePropertyOptions ? "Delete property" : "Delete detector", role: .destructive) {
                                 let impactMed = UIImpactFeedbackGenerator(style: .medium)
                                 impactMed.impactOccurred()
-
+                                
                                 // Upload new detectors & return to properties view
-//                                SessionManager.shared.uploadNewDetectors()
-//                                print("Deleting properties")
+                                //                                SessionManager.shared.uploadNewDetectors()
+                                //                                print("Deleting properties")
                                 if (showingDeletePropertyOptions) {
                                     SessionManager.shared.deleteProperty()
                                     withAnimation {
                                         SessionManager.shared.appState = .properties
                                     }
                                 } else if (showingDeleteDetectorOptions) {
-//                                    withAnimation {
-//                                        SessionManager.shared.appState = .properties
-//                                    }
+                                    //                                    withAnimation {
+                                    //                                        SessionManager.shared.appState = .properties
+                                    //                                    }
                                     withAnimation(.easeIn(duration: 0.1)) {
                                         self.dragOffset = .zero
                                     }
-                                    showDetectorDetails = false
-                                    selectedDetector = nil
-                                    SessionManager.shared.deleteDetector()
+                                    DispatchQueue.main.async {
+                                        print("comp0: \(SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors.count)")
+                                        showDetectorDetails.toggle(); dragOffset = .zero
+                                        if (SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors.count <= 1) {
+                                            withAnimation {
+                                                print("Setting app state \(SessionManager.shared.appState)")
+//                                                SessionManager.shared.appState = .properties
+                                                print("Finished app state \(SessionManager.shared.appState)")
+                                            }
+                                        }
+                                        print("comp1: \(SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors.count), \(self.annotations)")
+                                        selectedDetector = nil
+                                        SessionManager.shared.deleteDetector()
+                                        
+                                        DispatchQueue.main.async {
+                                            for (i, annotation) in self.annotations.enumerated() {
+                                                print("i, ann: \(i) \(SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors[SessionManager.shared.selectedDetectorIndex].id) \(annotation)")
+                                                if annotation.id == SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors[SessionManager.shared.selectedDetectorIndex].id {
+                                                    self.annotations.remove(at: i)
+                                                    print("removed, \(self.annotations)")
+                                                    break
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                                 combinedBinding.wrappedValue = false
                                 dismiss()
                             }
                         }
+                    
+                    let x = print("MapOffset: \(self.mapOffset), Detector: \(self.detectorOverlaySize), Property: \(self.propertyOverlaySize)")
+                    
+                    PropertyDetailOverlayView(isPresentingScanner: $isPresentingScanner, zoomLevel: $zoomLevel, property: sessionManager.selectedProperty!, mapOffset: $mapOffset, size: $propertyOverlaySize, sessionManager: sessionManager, selectedDetectorIndex: $selectedDetectorIndex, showDetectorDetails: $showDetectorDetails,selectedDetector: $selectedDetector, selectedMarker: $selectedMarker, detectors: MainMapView.detectors, annotations: $annotations, newDetector: $newDetector, isConfirmingLocation: $isConfirmingLocation, pin: self.$pin, sensorTapped: $sensorTapped, showingOptions: $showingDeletePropertyOptions, dragOffset: $dragOffset)
+                        .offset(x: 0, y: showDetectorDetails ? UIScreen.main.bounds.height : self.dragOffset.height)
+                        .gesture(
+                            DragGesture()
+                                .onChanged { gesture in
+                                    if !showDetectorDetails {
+                                        print("Gesture: \(gesture.translation), size: \(self.propertyOverlaySize)")
+                                        //                                    if gesture.translation.height <= self.size.height && gesture.translation.height > 0 {
+                                        //                                        self.dragOffset = gesture.translation
+                                        //                                        self.mapOffset.height = self.size.height gesture.translation.height
+                                        //                                    }
+                                        if gesture.translation.height < 0 && self.dragOffset.height > 0 {
+                                            print("Dragging up")
+                                            self.dragOffset.height = (self.propertyOverlaySize.height - PROPERTY_MIN_OFFSET) - fabs(gesture.translation.height)
+                                            self.mapOffset.height = PROPERTY_MIN_OFFSET + fabs(gesture.translation.height)
+                                        } else if gesture.translation.height > 0 && gesture.translation.height <= self.propertyOverlaySize.height {
+                                            print("Dragging down")
+                                            self.dragOffset = gesture.translation
+                                            self.mapOffset.height = (self.propertyOverlaySize.height - gesture.translation.height)
+                                        }
+                                    }
+                                }
+                                .onEnded { _ in
+                                    if !showDetectorDetails {
+                                        if self.dragOffset.height + THRESHOLD > self.propertyOverlaySize.height {
+                                            print("Threshold")//
+                                            withAnimation(.easeIn(duration: ANIMATION_DURATION)) {
+                                                self.dragOffset.height = self.propertyOverlaySize.height - PROPERTY_MIN_OFFSET
+                                                self.mapOffset.height = PROPERTY_MIN_OFFSET
+                                            }
+                                            
+                                        } else {
+                                            print("Threshold1")
+                                            withAnimation(.easeIn(duration: ANIMATION_DURATION)) {
+                                                self.dragOffset = .zero
+                                                self.mapOffset.height = (self.propertyOverlaySize.height)
+                                            }
+                                        }
+                                    }
+                                }
+                        )
+                        .transition(slideTransition)
+                        .sheet(isPresented: $isPresentingScanner) {
+                            VStack {
+                                HStack {
+                                    Spacer()
+                                    
+                                    Text("Scan the QR code on your Torch device")
+                                        .font(Font.custom("Manrope-Medium", fixedSize: 20))
+                                        .foregroundColor(CustomColors.TorchGreen)
+                                        .padding(.top, 20)
+                                    
+                                    Spacer()
+                                }
+                                
+                                CodeScannerView(codeTypes: [.qr], showViewfinder: true) { response in
+                                    if case let .success(result) = response {
+                                        let impactMed = UIImpactFeedbackGenerator(style: .heavy)
+                                        impactMed.impactOccurred()
+                                        
+                                        print("Got device EUI: \(result.string)")
+                                        isPresentingScanner = false
+                                        
+                                        // create detector model
+                                        var detector = Detector(id: result.string, deviceName: String(sessionManager.selectedProperty!.detectors.count + 1), deviceBattery: 0.0, coordinate: nil, selected: true, sensorIdx: SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors.count + 1)
+                                        detector.isNewlyInstalled = true
+                                        self.newDetector = detector
+                                        self.newDetectorIndex = SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors.count
+                                        needsLocationPin = true
+                                        
+                                        // manually appending since selected==False already for all other detectors
+                                        SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors.append(detector)
+                                        sessionManager.selectedProperty!.detectors.append(detector)
+                                        
+                                        let x = print("Added, new detector count: \(SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors.count) \(detector.sensorIdx)")
+                                        SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors[newDetectorIndex]
+                                    }
+                                }
+                                .ignoresSafeArea(.container)
+                            }
+                        }
+                        .confirmationDialog("Select a color", isPresented: combinedBinding, titleVisibility: .hidden) {
+                            Button(showingDeletePropertyOptions ? "Delete property" : "Delete sensor", role: .destructive) {
+                                let impactMed = UIImpactFeedbackGenerator(style: .medium)
+                                impactMed.impactOccurred()
+                                
+                                // Upload new detectors & return to properties view
+                                //                                SessionManager.shared.uploadNewDetectors()
+                                //                                print("Deleting properties")
+                                if (showingDeletePropertyOptions) {
+                                    withAnimation {
+                                        SessionManager.shared.appState = .properties
+                                    }
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                                        SessionManager.shared.deleteProperty()
+                                    }
+                                } else if (showingDeleteDetectorOptions) {
+                                    print("comp0: \(SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors.count)")
+                                    if (SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors.count <= 1) {
+                                        withAnimation {
+                                            print("Setting app state \(SessionManager.shared.appState)")
+//                                            SessionManager.shared.appState = .properties
+                                            print("Finished app state \(SessionManager.shared.appState)")
+                                        }
+                                    }
+//                                    print("comp1: \(SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors.count)")
+                                    print("comp1: \(SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors.count), \(self.annotations)")
+//                                    selectedDetector = nil
+//                                    SessionManager.shared.deleteDetector()
+                                    
+                                    DispatchQueue.main.async {
+                                        for (i, annotation) in self.annotations.enumerated() {
+                                            print("i, ann: \(i) \(SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors[SessionManager.shared.selectedDetectorIndex].id) \(annotation)")
+                                            if annotation.id == SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors[SessionManager.shared.selectedDetectorIndex].id {
+                                                self.annotations.remove(at: i)
+                                                print("removed, \(self.annotations)")
+                                                break
+                                            }
+                                        }
+                                    }
+                                    
+                                    SessionManager.shared.deleteDetector()
+                                    
+                                    withAnimation(.easeIn(duration: 0.1)) {
+                                        self.dragOffset = .zero
+                                    }
+                                    showDetectorDetails.toggle(); dragOffset = .zero
+                                    selectedDetector = nil
+                                }
+                                combinedBinding.wrappedValue = false
+                                dismiss()
+                            }
+                        }
+                }
+                
+                // Overlay
+                if showDetectorDetails && !hideOverlay {
+//                    self.mapOffset.height = self.detectorOverlaySize.height
 //                            .transition(AnyTransition.move(edge: .top))
 //                        //                        .shadow(color: CustomColors.LightGray, radius: 5.0)
 //                    }
@@ -250,108 +420,8 @@ struct MainMapView: View {
                     }
                     
                 }  else if isConfirmingLocation {
-                    AddDetectorConfirmLocationOverlayView(size: $size, annotations: $annotations, pin: $pin, newDetector: $newDetector, isConfirmingLocation: $isConfirmingLocation, needsLocationPin: $needsLocationPin, newDetectorIndex: self.$newDetectorIndex)
+                    AddDetectorConfirmLocationOverlayView(size: $detectorOverlaySize, annotations: $annotations, pin: $pin, newDetector: $newDetector, isConfirmingLocation: $isConfirmingLocation, needsLocationPin: $needsLocationPin, newDetectorIndex: self.$newDetectorIndex)
                 } else if !hideOverlay {
-                    
-                    PropertyDetailOverlayView(isPresentingScanner: $isPresentingScanner, zoomLevel: $zoomLevel, property: sessionManager.selectedProperty!, mapOffset: $mapOffset, size: $size, sessionManager: sessionManager, selectedDetectorIndex: $selectedDetectorIndex, showDetectorDetails: $showDetectorDetails,selectedDetector: $selectedDetector, selectedMarker: $selectedMarker, detectors: MainMapView.detectors, annotations: $annotations, newDetector: $newDetector, isConfirmingLocation: $isConfirmingLocation, pin: self.$pin, sensorTapped: $sensorTapped, showingOptions: $showingDeletePropertyOptions)
-                        .offset(x: 0, y: self.dragOffset.height)
-                        .gesture(
-                            DragGesture()
-                                .onChanged { gesture in
-                                    print("Gesture: \(gesture.translation), size: \(self.size)")
-//                                    if gesture.translation.height <= self.size.height && gesture.translation.height > 0 {
-//                                        self.dragOffset = gesture.translation
-//                                        self.mapOffset.height = self.size.height gesture.translation.height
-//                                    }
-                                    if gesture.translation.height < 0 && self.dragOffset.height > 0 {
-                                        print("Dragging up")
-                                        self.dragOffset.height = (self.size.height - PROPERTY_MIN_OFFSET) - fabs(gesture.translation.height)
-                                        self.mapOffset.height = PROPERTY_MIN_OFFSET + fabs(gesture.translation.height)
-                                    } else if gesture.translation.height > 0 && gesture.translation.height <= self.size.height {
-                                        print("Dragging down")
-                                        self.dragOffset = gesture.translation
-                                        self.mapOffset.height = (self.size.height - gesture.translation.height)
-                                    }
-                                }
-                                .onEnded { _ in
-                                    if self.dragOffset.height + THRESHOLD > self.size.height {
-                                        print("Threshold")//
-                                        withAnimation(.easeIn(duration: ANIMATION_DURATION)) {
-                                            self.dragOffset.height = self.size.height - PROPERTY_MIN_OFFSET
-                                            self.mapOffset.height = PROPERTY_MIN_OFFSET
-                                        }
-                                        
-                                    } else {
-                                        withAnimation(.easeIn(duration: ANIMATION_DURATION)) {
-                                            self.dragOffset = .zero
-                                            self.mapOffset.height = (self.size.height)
-                                        }
-                                    }
-                                }
-                        )
-                        .sheet(isPresented: $isPresentingScanner) {
-                            VStack {
-                                HStack {
-                                    Spacer()
-                                    
-                                    Text("Scan the QR code on your Torch device")
-                                        .font(Font.custom("Manrope-Medium", fixedSize: 20))
-                                        .foregroundColor(CustomColors.TorchGreen)
-                                        .padding(.top, 20)
-                                    
-                                    Spacer()
-                                }
-                                
-                                CodeScannerView(codeTypes: [.qr], showViewfinder: true) { response in
-                                    if case let .success(result) = response {
-                                        let impactMed = UIImpactFeedbackGenerator(style: .heavy)
-                                        impactMed.impactOccurred()
-                                        
-                                        print("Got device EUI: \(result.string)")
-                                        isPresentingScanner = false
-                                        
-                                        // create detector model
-                                        var detector = Detector(id: result.string, deviceName: String(sessionManager.selectedProperty!.detectors.count + 1), deviceBattery: 0.0, coordinate: nil, selected: true, sensorIdx: sessionManager.selectedProperty!.detectors.count + 1)
-                                        self.newDetector = detector
-                                        self.newDetectorIndex = sessionManager.selectedProperty!.detectors.count
-                                        needsLocationPin = true
-                                        
-                                        // manually appending since selected==False already for all other detectors
-                                        SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors.append(detector)
-                                         sessionManager.selectedProperty!.detectors.append(detector)
-                                        
-                                        let x = print("Added, new detector count: \(sessionManager.selectedProperty!.detectors.count)")
-                                    }
-                                }
-                                .ignoresSafeArea(.container)
-                            }
-                        }
-                        .confirmationDialog("Select a color", isPresented: combinedBinding, titleVisibility: .hidden) {
-                            Button(showingDeletePropertyOptions ? "Delete property" : "Delete sensor", role: .destructive) {
-                                let impactMed = UIImpactFeedbackGenerator(style: .medium)
-                                impactMed.impactOccurred()
-
-                                // Upload new detectors & return to properties view
-//                                SessionManager.shared.uploadNewDetectors()
-//                                print("Deleting properties")
-                                if (showingDeletePropertyOptions) {
-                                    SessionManager.shared.deleteProperty()
-                                    withAnimation {
-                                        SessionManager.shared.appState = .properties
-                                    }
-                                } else if (showingDeleteDetectorOptions) {
-                                    SessionManager.shared.deleteDetector()
-                                                    
-                                    withAnimation(.easeIn(duration: 0.1)) {
-                                        self.dragOffset = .zero
-                                    }
-                                    showDetectorDetails = false
-                                    selectedDetector = nil
-                                }
-                                combinedBinding.wrappedValue = false
-                                dismiss()
-                            }
-                        }
                     
                     //
                     HStack {
@@ -371,8 +441,9 @@ struct MainMapView: View {
                             Spacer()
                                 .frame(height: 150)
                                                         
-        //                        LayersButton()
-        //                        LocationButton()
+                            ZoomInButton(zoomLevel: $zoomLevel, zoomChanged: $zoomChanged)
+                            ZoomOutButton(zoomLevel: $zoomLevel, zoomChanged: $zoomChanged)
+//                                LocationButton()
                         }
                         .padding(.trailing, 10)
                         .padding(.top, 10)
@@ -384,19 +455,19 @@ struct MainMapView: View {
                         HStack {
                             Spacer()
             
-                            ZoomInButton(zoomLevel: $zoomLevel, zoomChanged: $zoomChanged)
+//                            ZoomInButton(zoomLevel: $zoomLevel, zoomChanged: $zoomChanged)
                         }
                         .padding(.trailing, 10)
                         
                         HStack {
                             Spacer()
             
-                            ZoomOutButton(zoomLevel: $zoomLevel, zoomChanged: $zoomChanged)
+//                            ZoomOutButton(zoomLevel: $zoomLevel, zoomChanged: $zoomChanged)
                         }
                         .padding(.trailing, 10)
                         
-                        Spacer()
-                            .frame(height: 50)
+//                        Spacer()
+//                            .frame(height: 100)
                         
 //                        HStack {
 //                            Spacer()
@@ -415,11 +486,12 @@ struct MainMapView: View {
                         
                         Spacer()
                             .frame(height: self.mapOffset.height)
+//                            .frame(height: showDetectorDetails ? self.detectorOverlaySize.height : self.propertyOverlaySize.height)
                     }
                 }
                 //            DetectorDetailOverlayView(detector: customDetector)
             }
-//            .animation(.easeInOut)
+//            .animation(.spring())
         }
     }
 }
@@ -432,416 +504,456 @@ struct DetectorDetailOverlayView: View {
     @Binding var size: CGSize
     @Binding var mapOffset: CGSize
     
-    let detector: Detector
+//    let detector: Detector
     
     @ObservedObject var sessionManager: SessionManager
     
     @Binding var showingDeleteDetectorOptions: Bool
+    @Binding var showDetectorDetails: Bool
+    @Binding var dragOffset: CGSize
     
     var body: some View {
         VStack {
             Spacer()
             
-            VStack {
-                HStack {
-                    Spacer()
-                    
-                    RoundedRectangle(cornerRadius: 5.0)
-                        .frame(width: 30, height: 4)
-                        .foregroundColor(AuthenticationManager.shared.authState.rawValue >= AuthState.accountName.rawValue ? CustomColors.TorchGreen : Color(red: 227/255, green: 231/255, blue: 232/255))
-                    
-                    Spacer()
-                }
+            let abc = print("ui show!")
+            
+            if (sessionManager.selectedPropertyIndex >= 0 && sessionManager.selectedPropertyIndex < sessionManager.properties.count && sessionManager.selectedDetectorIndex < sessionManager.properties[sessionManager.selectedPropertyIndex].detectors.count) {
                 
-                ZStack {
-                    Rectangle()
-                        .cornerRadius(15.0)
-                        .ignoresSafeArea()
-                        .foregroundColor(colorScheme == .dark ? CustomColors.DarkModeOverlayBackground : Color.white)
-                        .frame(maxHeight: .infinity)
-                        .shadow(color: CustomColors.LightGray.opacity(0.5), radius: 2.0)
+                VStack {
+                    HStack {
+                        Spacer()
+                        
+                        RoundedRectangle(cornerRadius: 5.0)
+                            .frame(width: 30, height: 4)
+                            .foregroundColor(AuthenticationManager.shared.authState.rawValue >= AuthState.accountName.rawValue ? CustomColors.TorchGreen : Color(red: 227/255, green: 231/255, blue: 232/255))
+                        
+                        Spacer()
+                    }
                     
-                    VStack {
-                        HStack(spacing: 1) {
-                            
-                            let x = sessionManager.properties[sessionManager.selectedPropertyIndex].detectors[sessionManager.selectedDetectorIndex].sensorIdx as! Int
-                            
-                            
-                            Text("Sensor \(x)")
-                                .font(Font.custom("Manrope-SemiBold", size: 24.0))
-                                .kerning(-1)
-                                .foregroundColor(colorScheme == .dark ? Color.white : CustomColors.TorchGreen)
+                    ZStack {
+                        Rectangle()
+                            .cornerRadius(15.0)
+                            .ignoresSafeArea()
+                            .foregroundColor(colorScheme == .dark ? CustomColors.DarkModeOverlayBackground : Color.white)
+                            .frame(maxHeight: .infinity)
+                            .shadow(color: CustomColors.LightGray.opacity(0.5), radius: 2.0)
+                        
+                        if sessionManager.selectedDetectorIndex >= 0 && sessionManager.selectedDetectorIndex < sessionManager.properties[sessionManager.selectedPropertyIndex].detectors.count {
+                            VStack {
+                                HStack(spacing: 1) {
+                                    
+                                    let x = sessionManager.properties[sessionManager.selectedPropertyIndex].detectors[sessionManager.selectedDetectorIndex].sensorIdx as! Int
+                                    
+                                    
+                                    Text("Sensor \(x)")
+                                        .font(Font.custom("Manrope-SemiBold", size: 24.0))
+                                        .kerning(-1)
+                                        .foregroundColor(colorScheme == .dark ? Color.white : CustomColors.TorchGreen)
+                                        .padding(.leading, 15)
+                                        .padding(.top, 20)
+                                    
+                                    Spacer()
+                                    
+                                    Text("\(Int(sessionManager.properties[sessionManager.selectedPropertyIndex].detectors[sessionManager.selectedDetectorIndex].deviceBattery as! Double))%")
+                                        .font(Font.custom("Manrope-SemiBold", size: 13.0))
+                                        .foregroundColor(CustomColors.LightGray)
+                                        .padding(.top, 20)
+                                    //                            .padding(.leading, 20)
+                                    
+                                    
+                                    let deviceBattery = sessionManager.properties[sessionManager.selectedPropertyIndex].detectors[sessionManager.selectedDetectorIndex].deviceBattery as! Double
+                                    BatteryView(batteryLevel: deviceBattery)
+                                        .frame(width: 25, height: 10)
+                                        .padding(.top, 20)
+                                        .padding(.trailing, 15)
+                                        .padding(.leading, 5)
+                                    
+//                                    Image(systemName: "ellipsis")
+//                                        .foregroundColor(CustomColors.LightGray)
+//                                        .padding(.trailing, 23.0)
+//                                        .padding(.top, 20)
+//                                        .onTapGesture {
+//                                            print("Dots tapped")
+//                                            showingDeleteDetectorOptions.toggle()
+//                                        }
+                                    Image(systemName: "ellipsis")
+                                        .foregroundColor(CustomColors.LightGray)
+                                        .padding(.trailing, 23.0)
+                                        .padding(.top, 20)
+                                        .background(
+                                                Color.clear
+                                                    .padding(.trailing, 23.0)
+                                                    .padding(.top, 20)
+                                            )
+                                            .contentShape(Rectangle()) // Makes the entire padded area tappable
+                                        .onTapGesture {
+                                            let impactMed = UIImpactFeedbackGenerator(style: .medium)
+                                            impactMed.impactOccurred()
+                                            print("Dots tapped")
+                                            showingDeleteDetectorOptions.toggle()
+                                        }
+                                }
+                                
+                                HStack {
+                                    Text("Fire Probability")
+                                        .font(Font.custom("Manrope-Medium", size: 18.0))
+                                        .kerning(-1)
+                                        .foregroundColor(Color(red: 115.0/255.0, green: 136.0/255.0, blue: 140.0/255.0))
+                                    //                        115, 136, 140
+                                        .padding(.top, 1)
+                                    
+                                    Spacer()
+                                }
                                 .padding(.leading, 15)
-                                .padding(.top, 20)
-                                                    
-                            Spacer()
-                            
-                            Text("\(Int(sessionManager.properties[sessionManager.selectedPropertyIndex].detectors[sessionManager.selectedDetectorIndex].deviceBattery as! Double))%")
-                                .font(Font.custom("Manrope-SemiBold", size: 13.0))
-                                .foregroundColor(CustomColors.LightGray)
-                                .padding(.top, 20)
-    //                            .padding(.leading, 20)
-                            
-                            
-                            let deviceBattery = sessionManager.properties[sessionManager.selectedPropertyIndex].detectors[sessionManager.selectedDetectorIndex].deviceBattery as! Double
-                            BatteryView(batteryLevel: deviceBattery)
-                                .frame(width: 25, height: 10)
-                                .padding(.top, 20)
-                                .padding(.trailing, 15)
-                                .padding(.leading, 5)
-                            
-                            Image(systemName: "ellipsis")
-                                .foregroundColor(CustomColors.LightGray)
-                                .padding(.trailing, 23.0)
-                                .padding(.top, 20)
-                                .onTapGesture {
-                                    print("Dots tapped")
-                                    showingDeleteDetectorOptions.toggle()
-                                }
-                        }
-                        
-                        HStack {
-                            Text("Fire Probability")
-                                .font(Font.custom("Manrope-Medium", size: 18.0))
-                                .kerning(-1)
-                                .foregroundColor(Color(red: 115.0/255.0, green: 136.0/255.0, blue: 140.0/255.0))
-    //                        115, 136, 140
-                                .padding(.top, 1)
-                                                    
-                            Spacer()
-                        }
-                        .padding(.leading, 15)
-                        
-                        HStack {
-                            
-                            let fireRating = Int(sessionManager.properties[sessionManager.selectedPropertyIndex].detectors[sessionManager.selectedDetectorIndex].measurements["fire_rating"] ?? "80")
-                            let highRisk = (sessionManager.properties[sessionManager.selectedPropertyIndex].detectors[sessionManager.selectedDetectorIndex].threat == Threat.Red)
-                            let mediumRisk = !highRisk && (sessionManager.properties[sessionManager.selectedPropertyIndex].detectors[sessionManager.selectedDetectorIndex].threat == Threat.Yellow)
-                            let riskText = highRisk ? "High Risk" : (mediumRisk ? "Medium Risk" : "Low Risk")
-                            let riskColor = highRisk ? CustomColors.TorchRed : (mediumRisk ? CustomColors.WarningYellow : CustomColors.GoodGreen)
-                            
-                            VStack {
-                                Text("\(sessionManager.properties[sessionManager.selectedPropertyIndex].detectors[sessionManager.selectedDetectorIndex].measurements["fire_rating"] ?? "80")%")
-                                    .font(Font.custom("Manrope-SemiBold", size: 36.0))
-                                    .kerning(-1)
-                                    .foregroundColor(.white)
                                 
-                                Text(riskText)
-                                    .font(Font.custom("Manrope-Bold", size: 14))
-                                    .kerning(-0.5)
-                                    .foregroundColor(.white)
-                            }
-                            .frame(width: 0.8 * width / 3)
-    //                            .frame(width: width / 3)
-                            .frame(height: width / 3 * 0.7)
-                            .background(riskColor)
-                            .cornerRadius(12.0)
-                            .shadow(color: CustomColors.DetectorDetailsShadow, radius: 12.0, x: 0.0, y: 4.0)
-                            .padding(.leading, 15)
-                                                    
-                            
-                            Spacer()
-                                .frame(width: 10)
-                            
-                            HStack {
-                                VStack(alignment: .leading) {
-                                    HStack(spacing: 5) {
-                                        Text("Temperature")
-                                            .font(Font.custom("Manrope-SemiBold", size: 13.0))
-                                            .kerning(-0.5)
-                                            .foregroundColor(CustomColors.LightGray)
-    //                                        .padding(.leading, 5)
-                                        Image("Thermometer")
-                                            .resizable()
-                                            .frame(width: 20.0, height: 20.0)
-                                    }
+                                HStack {
                                     
-                                    HStack(spacing: 5) {
-                                        Text("Humidity")
-                                            .font(Font.custom("Manrope-SemiBold", size: 13.0))
-                                            .kerning(-0.5)
-                                            .foregroundColor(CustomColors.LightGray)
-    //                                        .padding(.leading, 5)
-                                        Image("Humidity")
-                                            .resizable()
-                                            .frame(width: 20.0, height: 20.0)
-                                    }
-                                }
-                                .padding(.trailing, 12)
-                                
-    //                            Spacer()
-                                
-                                VStack {
-                                    Text("\(sessionManager.properties[sessionManager.selectedPropertyIndex].detectors[sessionManager.selectedDetectorIndex].measurements["temperature"] ?? "28")°C")
-                                        .font(Font.custom("Manrope-Bold", size: 14.0))
-                                        .foregroundColor(CustomColors.TorchRed)
+                                    let fireRating = Int(sessionManager.properties[sessionManager.selectedPropertyIndex].detectors[sessionManager.selectedDetectorIndex].measurements["fire_rating"] ?? "80")
+                                    let highRisk = (sessionManager.properties[sessionManager.selectedPropertyIndex].detectors[sessionManager.selectedDetectorIndex].threat == Threat.Red)
+                                    let mediumRisk = !highRisk && (sessionManager.properties[sessionManager.selectedPropertyIndex].detectors[sessionManager.selectedDetectorIndex].threat == Threat.Yellow)
+                                    let riskText = highRisk ? "High Risk" : (mediumRisk ? "Medium Risk" : "Low Risk")
+                                    let riskColor = highRisk ? CustomColors.TorchRed : (mediumRisk ? CustomColors.WarningYellow : CustomColors.GoodGreen)
                                     
-                                    Spacer()
-                                        .frame(height: 12)
-                                    
-                                    Text("\(sessionManager.properties[sessionManager.selectedPropertyIndex].detectors[sessionManager.selectedDetectorIndex].measurements["humidity"] ?? "85")%")
-                                        .font(Font.custom("Manrope-Bold", size: 14.0))
-                                        .foregroundColor(CustomColors.GoodGreen)
-                                }
-                                
-                                VStack(alignment: .trailing) {
-                                    HStack(spacing: 1) {
-                                        Image(systemName: "arrow.up")
-                                            .foregroundColor(CustomColors.LightGray)
-                                            .font(.system(size: 13.0))
-    //                                        .padding(.leading, 10)
+                                    VStack {
+                                        Text("\(sessionManager.properties[sessionManager.selectedPropertyIndex].detectors[sessionManager.selectedDetectorIndex].measurements["fire_rating"] ?? "80")%")
+                                            .font(Font.custom("Manrope-SemiBold", size: 36.0))
+                                            .kerning(-1)
+                                            .foregroundColor(.white)
                                         
-                                        Text("2°C")
-                                            .font(Font.custom("Manrope-Bold", size: 14.0))
-                                            .foregroundColor(colorScheme == .dark ? Color.white : CustomColors.TorchGreen)
-    //                                        .padding(.trailing, 10)
-                                    }
-                                    
-                                    Spacer()
-                                        .frame(height: 12)
-                                    
-                                    HStack(spacing: 1) {
-                                        Image(systemName: "arrow.up")
-                                            .foregroundColor(CustomColors.LightGray)
-                                            .font(.system(size: 13.0))
-    //                                        .font(.system(Font.TextStyle.body))
-
-                                        Text("5%")
-                                            .font(Font.custom("Manrope-Bold", size: 14.0))
-                                            .foregroundColor(colorScheme == .dark ? Color.white : CustomColors.TorchGreen)
-    //                                        .padding(.trailing, 10)
-                                    }
-                                }
-                                .padding(.leading, 7)
-                            }
-                            .frame(maxWidth: .infinity)
-                            .frame(height: width / 3 * 0.7)
-                            .background(colorScheme == .dark ? Color(red: 0.24, green: 0.26, blue: 0.27) : Color.white)
-                            .cornerRadius(12.0)
-                            .shadow(color: CustomColors.DetectorDetailsShadow, radius: 12.0, x: 0.0, y: 4.0)
-                            .padding(.trailing, 15)
-                        }
-                        
-                        // Bottom 3 menus
-                        HStack {
-                            // Thermal camera
-                            VStack {
-                                ZStack {
-                                    HStack {
-                                        Text("Thermal \ncamera")
-                                            .font(Font.custom("Manrope-SemiBold", size: 14.0))
-                                            .kerning(-0.5)
-                                            .foregroundColor(CustomColors.LightGray)
-                                        
-                                        Spacer()
-                                    }
-                                    .padding(.leading, 15)
-                                    
-                                    HStack {
-                                        Spacer()
-                                        
-                                        Image(systemName: "info.circle")
-                                            .foregroundColor(CustomColors.LightGray)
-                                    }
-                                    .padding(.trailing, 15)
-                                    .padding(.bottom, 15)
-                                }
-                                
-                                Spacer()
-                                    .frame(height: 10)
-                                
-//                                HStack {
-//                                    Text("95%")
-//                                        .font(Font.custom("Manrope-SemiBold", size: 30.0))
-//                                        .kerning(-1)
-//                                        .foregroundColor(colorScheme == .dark ? Color.white : CustomColors.TorchGreen)
-//                                    
-//                                    Spacer()
-//                                }
-//                                .padding(.leading, 15)
-                                
-                                ZStack {
-                                    HStack {
-//                                        let img = Image("Fire65")
-                                        
-//                                        var fireImage = UIImage(named: "FireYellow")
-//                                        let uiImggg = UIImage(cgImage: (fireImage?.cgImage)!, scale: 5.0, orientation: (fireImage?.imageOrientation)!)
-//                                        let imgggg = Image.init(uiImage: uiImggg)
-                                        
-                                        let highRisk = (sessionManager.properties[sessionManager.selectedPropertyIndex].detectors[sessionManager.selectedDetectorIndex].thermalStatus == Threat.Red)
-                                        let mediumRisk = !highRisk && (sessionManager.properties[sessionManager.selectedPropertyIndex].detectors[sessionManager.selectedDetectorIndex].thermalStatus == Threat.Yellow)
-                                        let riskText = highRisk ? "Red alert" : (mediumRisk ? "Warning" : "Normal")
-                                        let riskImage = highRisk ? "FireRed" : (mediumRisk ? "FireYellow" : "Checkmark")
-                                        let riskColor = highRisk ? CustomColors.TorchRed : (mediumRisk ? CustomColors.WarningYellow : CustomColors.GoodGreen)
-
-                                        Text("\(riskText)  \(Image.init(uiImage: UIImage(cgImage: UIImage(named: riskImage)!.cgImage!, scale: 5.0, orientation: UIImage(named: riskImage)!.imageOrientation)))")
-    //                                        .frame(width: 60)
+                                        Text(riskText)
                                             .font(Font.custom("Manrope-Bold", size: 14))
                                             .kerning(-0.5)
-                                            .foregroundColor(riskColor)
-                                        
-                                        Spacer()
+                                            .foregroundColor(.white)
                                     }
-                                }
-    //                            .frame(width: .infinity, height: 1)
-                                .padding(.horizontal, 15)
-                            }
-                            .frame(maxWidth: .infinity)
-                            .frame(height: (width - 60) / 3 * 0.8)
-                            .background(colorScheme == .dark ? Color(red: 0.24, green: 0.26, blue: 0.27) : Color(red: 1.0, green: 1.0, blue: 1.0))
-                            .cornerRadius(12.0)
-                            .shadow(color: CustomColors.DetectorDetailsShadow, radius: 12.0, x: 0.0, y: 4.0)
-                            .padding(.leading, 15)
-                            
-                            Spacer()
-                                .frame(width: 10)
-                            
-                            // Spectral Analysis
-                            VStack {
-                                ZStack {
-                                    HStack {
-                                        Text("Spectral \nanalysis")
-                                            .font(Font.custom("Manrope-SemiBold", size: 14.0))
-                                            .kerning(-0.5)
-                                            .foregroundColor(CustomColors.LightGray)
-                                        
-                                        Spacer()
-                                    }
+                                    .frame(width: 0.8 * width / 3)
+                                    //                            .frame(width: width / 3)
+                                    .frame(height: width / 3 * 0.7)
+                                    .background(riskColor)
+                                    .cornerRadius(12.0)
+                                    .shadow(color: CustomColors.DetectorDetailsShadow, radius: 12.0, x: 0.0, y: 4.0)
                                     .padding(.leading, 15)
                                     
-                                    HStack {
-                                        Spacer()
-                                        
-                                        Image(systemName: "info.circle")
-                                            .foregroundColor(CustomColors.LightGray)
-                                    }
-                                    .padding(.trailing, 15)
-                                    .padding(.bottom, 15)
-                                }
-                                
-                                Spacer()
-                                    .frame(height: 10)
-                                
-//                                HStack {
-//                                    Text("82%")
-//                                        .font(Font.custom("Manrope-SemiBold", size: 30.0))
-//                                        .kerning(-1)
-//                                        .foregroundColor(colorScheme == .dark ? Color.white : CustomColors.TorchGreen)
-//                                    
-//                                    Spacer()
-//                                }
-//                                .padding(.leading, 15)
-                                
-                                HStack {
-//                                    var fireImage = UIImage(named: "FireRed")
-//                                    let uiImg = UIImage(cgImage: (fireImage?.cgImage)!, scale: 5.0, orientation: (fireImage?.imageOrientation)!)
-//                                    let img1 = Image(uiImage: uiImg)
-//
-                                    
-//                                    Text("Red alert  \(img1)")
-                                    
-                                    let highRisk = (sessionManager.properties[sessionManager.selectedPropertyIndex].detectors[sessionManager.selectedDetectorIndex].spectralStatus == Threat.Red)
-                                    let mediumRisk = !highRisk && (sessionManager.properties[sessionManager.selectedPropertyIndex].detectors[sessionManager.selectedDetectorIndex].spectralStatus == Threat.Yellow)
-                                    let riskText = highRisk ? "Red alert" : (mediumRisk ? "Warning" : "Normal")
-                                    let riskImage = highRisk ? "FireRed" : (mediumRisk ? "FireYellow" : "Checkmark")
-                                    let riskColor = highRisk ? CustomColors.TorchRed : (mediumRisk ? CustomColors.WarningYellow : CustomColors.GoodGreen)
-
-                                    Text("\(riskText)  \(Image.init(uiImage: UIImage(cgImage: UIImage(named: riskImage)!.cgImage!, scale: 5.0, orientation: UIImage(named: riskImage)!.imageOrientation)))")
-//                                        .frame(width: 60)
-                                        .font(Font.custom("Manrope-Bold", size: 14))
-                                        .kerning(-0.5)
-                                        .foregroundColor(riskColor)
                                     
                                     Spacer()
-                                }
-                                .padding(.leading, 15)
-                            }
-                            .frame(width: (width - 45) / 3)
-                            .frame(height: (width - 60) / 3 * 0.8)
-                            .background(colorScheme == .dark ? Color(red: 0.24, green: 0.26, blue: 0.27) : Color.white)
-                            .cornerRadius(12.0)
-                            .shadow(color: CustomColors.DetectorDetailsShadow, radius: 12.0, x: 0.0, y: 4.0)
-                            
-                            Spacer()
-                                .frame(width: 10)
-                            
-                            
-                            // Smoke
-                            VStack {
-                                ZStack {
+                                        .frame(width: 10)
+                                    
                                     HStack {
-                                        Text("Smoke\n")
-                                            .font(Font.custom("Manrope-SemiBold", size: 14.0))
-                                            .kerning(-0.5)
-                                            .foregroundColor(CustomColors.LightGray)
+                                        VStack(alignment: .leading) {
+                                            HStack(spacing: 5) {
+                                                Text("Temperature")
+                                                    .font(Font.custom("Manrope-SemiBold", size: 13.0))
+                                                    .kerning(-0.5)
+                                                    .foregroundColor(CustomColors.LightGray)
+                                                //                                        .padding(.leading, 5)
+                                                Image("Thermometer")
+                                                    .resizable()
+                                                    .frame(width: 20.0, height: 20.0)
+                                            }
+                                            
+                                            HStack(spacing: 5) {
+                                                Text("Humidity")
+                                                    .font(Font.custom("Manrope-SemiBold", size: 13.0))
+                                                    .kerning(-0.5)
+                                                    .foregroundColor(CustomColors.LightGray)
+                                                //                                        .padding(.leading, 5)
+                                                Image("Humidity")
+                                                    .resizable()
+                                                    .frame(width: 20.0, height: 20.0)
+                                            }
+                                        }
+                                        .padding(.trailing, 12)
+                                        
+                                        //                            Spacer()
+                                        
+                                        VStack {
+                                            Text("\(sessionManager.properties[sessionManager.selectedPropertyIndex].detectors[sessionManager.selectedDetectorIndex].measurements["temperature"] ?? "28")°C")
+                                                .font(Font.custom("Manrope-Bold", size: 14.0))
+                                                .foregroundColor(CustomColors.TorchRed)
+                                            
+                                            Spacer()
+                                                .frame(height: 12)
+                                            
+                                            Text("\(sessionManager.properties[sessionManager.selectedPropertyIndex].detectors[sessionManager.selectedDetectorIndex].measurements["humidity"] ?? "85")%")
+                                                .font(Font.custom("Manrope-Bold", size: 14.0))
+                                                .foregroundColor(CustomColors.GoodGreen)
+                                        }
+                                        
+                                        VStack(alignment: .trailing) {
+                                            HStack(spacing: 1) {
+                                                Image(systemName: "arrow.up")
+                                                    .foregroundColor(CustomColors.LightGray)
+                                                    .font(.system(size: 13.0))
+                                                //                                        .padding(.leading, 10)
+                                                
+                                                Text("2°C")
+                                                    .font(Font.custom("Manrope-Bold", size: 14.0))
+                                                    .foregroundColor(colorScheme == .dark ? Color.white : CustomColors.TorchGreen)
+                                                //                                        .padding(.trailing, 10)
+                                            }
+                                            
+                                            Spacer()
+                                                .frame(height: 12)
+                                            
+                                            HStack(spacing: 1) {
+                                                Image(systemName: "arrow.up")
+                                                    .foregroundColor(CustomColors.LightGray)
+                                                    .font(.system(size: 13.0))
+                                                //                                        .font(.system(Font.TextStyle.body))
+                                                
+                                                Text("5%")
+                                                    .font(Font.custom("Manrope-Bold", size: 14.0))
+                                                    .foregroundColor(colorScheme == .dark ? Color.white : CustomColors.TorchGreen)
+                                                //                                        .padding(.trailing, 10)
+                                            }
+                                        }
+                                        .padding(.leading, 7)
+                                    }
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: width / 3 * 0.7)
+                                    .background(colorScheme == .dark ? Color(red: 0.24, green: 0.26, blue: 0.27) : Color.white)
+                                    .cornerRadius(12.0)
+                                    .shadow(color: CustomColors.DetectorDetailsShadow, radius: 12.0, x: 0.0, y: 4.0)
+                                    .padding(.trailing, 15)
+                                }
+                                
+                                // Bottom 3 menus
+                                HStack {
+                                    // Thermal camera
+                                    VStack {
+                                        ZStack {
+                                            HStack {
+                                                Text("Thermal \ncamera")
+                                                    .font(Font.custom("Manrope-SemiBold", size: 14.0))
+                                                    .kerning(-0.5)
+                                                    .foregroundColor(CustomColors.LightGray)
+                                                
+                                                Spacer()
+                                            }
+                                            .padding(.leading, 15)
+                                            
+                                            HStack {
+                                                Spacer()
+                                                
+                                                Image(systemName: "info.circle")
+                                                    .foregroundColor(CustomColors.LightGray)
+                                            }
+                                            .padding(.trailing, 15)
+                                            .padding(.bottom, 15)
+                                        }
                                         
                                         Spacer()
+                                            .frame(height: 10)
+                                        
+                                        //                                HStack {
+                                        //                                    Text("95%")
+                                        //                                        .font(Font.custom("Manrope-SemiBold", size: 30.0))
+                                        //                                        .kerning(-1)
+                                        //                                        .foregroundColor(colorScheme == .dark ? Color.white : CustomColors.TorchGreen)
+                                        //
+                                        //                                    Spacer()
+                                        //                                }
+                                        //                                .padding(.leading, 15)
+                                        
+                                        ZStack {
+                                            HStack {
+                                                //                                        let img = Image("Fire65")
+                                                
+                                                //                                        var fireImage = UIImage(named: "FireYellow")
+                                                //                                        let uiImggg = UIImage(cgImage: (fireImage?.cgImage)!, scale: 5.0, orientation: (fireImage?.imageOrientation)!)
+                                                //                                        let imgggg = Image.init(uiImage: uiImggg)
+                                                
+                                                let highRisk = (sessionManager.properties[sessionManager.selectedPropertyIndex].detectors[sessionManager.selectedDetectorIndex].thermalStatus == Threat.Red)
+                                                let mediumRisk = !highRisk && (sessionManager.properties[sessionManager.selectedPropertyIndex].detectors[sessionManager.selectedDetectorIndex].thermalStatus == Threat.Yellow)
+                                                let riskText = highRisk ? "Red alert" : (mediumRisk ? "Warning" : "Normal")
+                                                let riskImage = highRisk ? "FireRed" : (mediumRisk ? "FireYellow" : "Checkmark")
+                                                let riskColor = highRisk ? CustomColors.TorchRed : (mediumRisk ? CustomColors.WarningYellow : CustomColors.GoodGreen)
+                                                
+                                                Text("\(riskText)  \(Image.init(uiImage: UIImage(cgImage: UIImage(named: riskImage)!.cgImage!, scale: 5.0, orientation: UIImage(named: riskImage)!.imageOrientation)))")
+                                                //                                        .frame(width: 60)
+                                                    .font(Font.custom("Manrope-Bold", size: 14))
+                                                    .kerning(-0.5)
+                                                    .foregroundColor(riskColor)
+                                                
+                                                Spacer()
+                                            }
+                                        }
+                                        //                            .frame(width: .infinity, height: 1)
+                                        .padding(.horizontal, 15)
                                     }
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: (width - 60) / 3 * 0.8)
+                                    .background(colorScheme == .dark ? Color(red: 0.24, green: 0.26, blue: 0.27) : Color(red: 1.0, green: 1.0, blue: 1.0))
+                                    .cornerRadius(12.0)
+                                    .shadow(color: CustomColors.DetectorDetailsShadow, radius: 12.0, x: 0.0, y: 4.0)
                                     .padding(.leading, 15)
                                     
-                                    HStack {
-                                        Spacer()
+                                    Spacer()
+                                        .frame(width: 10)
+                                    
+                                    // Spectral Analysis
+                                    VStack {
+                                        ZStack {
+                                            HStack {
+                                                Text("Spectral \nanalysis")
+                                                    .font(Font.custom("Manrope-SemiBold", size: 14.0))
+                                                    .kerning(-0.5)
+                                                    .foregroundColor(CustomColors.LightGray)
+                                                
+                                                Spacer()
+                                            }
+                                            .padding(.leading, 15)
+                                            
+                                            HStack {
+                                                Spacer()
+                                                
+                                                Image(systemName: "info.circle")
+                                                    .foregroundColor(CustomColors.LightGray)
+                                            }
+                                            .padding(.trailing, 15)
+                                            .padding(.bottom, 15)
+                                        }
                                         
-                                        Image(systemName: "info.circle")
-                                            .foregroundColor(CustomColors.LightGray)
+                                        Spacer()
+                                            .frame(height: 10)
+                                        
+                                        //                                HStack {
+                                        //                                    Text("82%")
+                                        //                                        .font(Font.custom("Manrope-SemiBold", size: 30.0))
+                                        //                                        .kerning(-1)
+                                        //                                        .foregroundColor(colorScheme == .dark ? Color.white : CustomColors.TorchGreen)
+                                        //
+                                        //                                    Spacer()
+                                        //                                }
+                                        //                                .padding(.leading, 15)
+                                        
+                                        HStack {
+                                            //                                    var fireImage = UIImage(named: "FireRed")
+                                            //                                    let uiImg = UIImage(cgImage: (fireImage?.cgImage)!, scale: 5.0, orientation: (fireImage?.imageOrientation)!)
+                                            //                                    let img1 = Image(uiImage: uiImg)
+                                            //
+                                            
+                                            //                                    Text("Red alert  \(img1)")
+                                            
+                                            let highRisk = (sessionManager.properties[sessionManager.selectedPropertyIndex].detectors[sessionManager.selectedDetectorIndex].spectralStatus == Threat.Red)
+                                            let mediumRisk = !highRisk && (sessionManager.properties[sessionManager.selectedPropertyIndex].detectors[sessionManager.selectedDetectorIndex].spectralStatus == Threat.Yellow)
+                                            let riskText = highRisk ? "Red alert" : (mediumRisk ? "Warning" : "Normal")
+                                            let riskImage = highRisk ? "FireRed" : (mediumRisk ? "FireYellow" : "Checkmark")
+                                            let riskColor = highRisk ? CustomColors.TorchRed : (mediumRisk ? CustomColors.WarningYellow : CustomColors.GoodGreen)
+                                            
+                                            Text("\(riskText)  \(Image.init(uiImage: UIImage(cgImage: UIImage(named: riskImage)!.cgImage!, scale: 5.0, orientation: UIImage(named: riskImage)!.imageOrientation)))")
+                                            //                                        .frame(width: 60)
+                                                .font(Font.custom("Manrope-Bold", size: 14))
+                                                .kerning(-0.5)
+                                                .foregroundColor(riskColor)
+                                            
+                                            Spacer()
+                                        }
+                                        .padding(.leading, 15)
                                     }
-                                    .padding(.trailing, 15)
-                                    .padding(.bottom, 15)
-                                }
-                                
-                                Spacer()
-                                    .frame(height: 10)
-                                
-//                                HStack {
-//                                    Text("25%")
-//                                        .font(Font.custom("Manrope-SemiBold", size: 30.0))
-//                                        .kerning(-1)
-//                                        .foregroundColor(colorScheme == .dark ? Color.white : CustomColors.TorchGreen)
-//                                    
-//                                    Spacer()
-//                                }
-//                                .padding(.leading, 15)
-                                
-                                HStack {
-//                                    let smokeStatus =
-                                    let highRisk = (sessionManager.properties[sessionManager.selectedPropertyIndex].detectors[sessionManager.selectedDetectorIndex].smokeStatus == Threat.Red)
-                                    let mediumRisk = !highRisk && (sessionManager.properties[sessionManager.selectedPropertyIndex].detectors[sessionManager.selectedDetectorIndex].smokeStatus == Threat.Yellow)
-                                    let riskText = highRisk ? "Red alert" : (mediumRisk ? "Warning" : "Normal")
-                                    let riskImage = highRisk ? "FireRed" : (mediumRisk ? "FireYellow" : "Checkmark")
-                                    let riskColor = highRisk ? CustomColors.TorchRed : (mediumRisk ? CustomColors.WarningYellow : CustomColors.GoodGreen)
-
-                                    Text("\(riskText)  \(Image.init(uiImage: UIImage(cgImage: UIImage(named: riskImage)!.cgImage!, scale: 5.0, orientation: UIImage(named: riskImage)!.imageOrientation)))")
-//                                        .frame(width: 60)
-                                        .font(Font.custom("Manrope-Bold", size: 14))
-                                        .kerning(-0.5)
-                                        .foregroundColor(riskColor)
+                                    .frame(width: (width - 45) / 3)
+                                    .frame(height: (width - 60) / 3 * 0.8)
+                                    .background(colorScheme == .dark ? Color(red: 0.24, green: 0.26, blue: 0.27) : Color.white)
+                                    .cornerRadius(12.0)
+                                    .shadow(color: CustomColors.DetectorDetailsShadow, radius: 12.0, x: 0.0, y: 4.0)
                                     
                                     Spacer()
+                                        .frame(width: 10)
+                                    
+                                    
+                                    // Smoke
+                                    VStack {
+                                        ZStack {
+                                            HStack {
+                                                Text("Smoke\n")
+                                                    .font(Font.custom("Manrope-SemiBold", size: 14.0))
+                                                    .kerning(-0.5)
+                                                    .foregroundColor(CustomColors.LightGray)
+                                                
+                                                Spacer()
+                                            }
+                                            .padding(.leading, 15)
+                                            
+                                            HStack {
+                                                Spacer()
+                                                
+                                                Image(systemName: "info.circle")
+                                                    .foregroundColor(CustomColors.LightGray)
+                                            }
+                                            .padding(.trailing, 15)
+                                            .padding(.bottom, 15)
+                                        }
+                                        
+                                        Spacer()
+                                            .frame(height: 10)
+                                        
+                                        //                                HStack {
+                                        //                                    Text("25%")
+                                        //                                        .font(Font.custom("Manrope-SemiBold", size: 30.0))
+                                        //                                        .kerning(-1)
+                                        //                                        .foregroundColor(colorScheme == .dark ? Color.white : CustomColors.TorchGreen)
+                                        //
+                                        //                                    Spacer()
+                                        //                                }
+                                        //                                .padding(.leading, 15)
+                                        
+                                        HStack {
+                                            //                                    let smokeStatus =
+                                            let highRisk = (sessionManager.properties[sessionManager.selectedPropertyIndex].detectors[sessionManager.selectedDetectorIndex].smokeStatus == Threat.Red)
+                                            let mediumRisk = !highRisk && (sessionManager.properties[sessionManager.selectedPropertyIndex].detectors[sessionManager.selectedDetectorIndex].smokeStatus == Threat.Yellow)
+                                            let riskText = highRisk ? "Red alert" : (mediumRisk ? "Warning" : "Normal")
+                                            let riskImage = highRisk ? "FireRed" : (mediumRisk ? "FireYellow" : "Checkmark")
+                                            let riskColor = highRisk ? CustomColors.TorchRed : (mediumRisk ? CustomColors.WarningYellow : CustomColors.GoodGreen)
+                                            
+                                            Text("\(riskText)  \(Image.init(uiImage: UIImage(cgImage: UIImage(named: riskImage)!.cgImage!, scale: 5.0, orientation: UIImage(named: riskImage)!.imageOrientation)))")
+                                            //                                        .frame(width: 60)
+                                                .font(Font.custom("Manrope-Bold", size: 14))
+                                                .kerning(-0.5)
+                                                .foregroundColor(riskColor)
+                                            
+                                            Spacer()
+                                        }
+                                        .padding(.leading, 15)
+                                    }
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: (width - 60) / 3 * 0.8)
+                                    .background(colorScheme == .dark ? Color(red: 0.24, green: 0.26, blue: 0.27) : Color.white)
+                                    .cornerRadius(12.0)
+                                    .shadow(color: CustomColors.DetectorDetailsShadow, radius: 12.0, x: 0.0, y: 4.0)
+                                    .padding(.trailing, 15)
                                 }
-                                .padding(.leading, 15)
+                                .padding(.bottom, 20)
                             }
-                            .frame(maxWidth: .infinity)
-                            .frame(height: (width - 60) / 3 * 0.8)
-                            .background(colorScheme == .dark ? Color(red: 0.24, green: 0.26, blue: 0.27) : Color.white)
-                            .cornerRadius(12.0)
-                            .shadow(color: CustomColors.DetectorDetailsShadow, radius: 12.0, x: 0.0, y: 4.0)
-                            .padding(.trailing, 15)
                         }
-                        .padding(.bottom, 20)
+                    }
+                    //            .frame(width: width, height: 2.2 * height / 5)
+                }
+                .fixedSize(horizontal: false, vertical: true)
+                .overlay(GeometryReader { geo in
+                    Rectangle().fill(Color.clear).onAppear {
+                        self.size = geo.size
+                        if showDetectorDetails {
+                            self.mapOffset = geo.size
+                            print("Det Set mapOffset 1 \(self.mapOffset)")
+                        }
+                    }.onChange(of: geo.size) { updatedSize in
+                        if showDetectorDetails {
+                            self.size = updatedSize
+                            self.mapOffset = geo.size
+                            print("Det Set mapOffset 2 \(self.mapOffset)")
+                        }
+                    }
+                })
+                .onChange(of: showDetectorDetails) { newValue in
+                    if newValue {
+                        print("Detector updating mapOffset")
+                        self.mapOffset = self.size
+                        print("Det Set mapOffset 3 \(self.mapOffset)")
                     }
                 }
-    //            .frame(width: width, height: 2.2 * height / 5)
+                
+                
             }
-            .fixedSize(horizontal: false, vertical: true)
-            .overlay(GeometryReader { geo in
-                Rectangle().fill(Color.clear).onAppear {
-                    self.size = geo.size
-                    self.mapOffset = geo.size
-                }.onChange(of: geo.size) { updatedSize in
-                    self.size = updatedSize
-                    self.mapOffset = geo.size
-                }
-            })
         }
     }
 }
@@ -875,294 +987,122 @@ struct PropertyDetailOverlayView: View {
     
     @Binding var showingOptions: Bool
     
+    @Binding var dragOffset: CGSize
+    
     var body: some View {
         VStack {
             Spacer()
-            
-            VStack {
-                HStack {
-                    Spacer()
+            if SessionManager.shared.selectedPropertyIndex >= 0 && SessionManager.shared.selectedPropertyIndex < SessionManager.shared.properties.count {
+                VStack {
+                    HStack {
+                        Spacer()
+                        
+                        RoundedRectangle(cornerRadius: 5.0)
+                            .frame(width: 30, height: 4)
+                            .foregroundColor(AuthenticationManager.shared.authState.rawValue >= AuthState.accountName.rawValue ? CustomColors.TorchGreen : Color(red: 227/255, green: 231/255, blue: 232/255))
+                        
+                        Spacer()
+                    }
                     
-                    RoundedRectangle(cornerRadius: 5.0)
-                        .frame(width: 30, height: 4)
-                        .foregroundColor(AuthenticationManager.shared.authState.rawValue >= AuthState.accountName.rawValue ? CustomColors.TorchGreen : Color(red: 227/255, green: 231/255, blue: 232/255))
-                    
-                    Spacer()
-                }
-                
-                ZStack {
-                    Rectangle()
-                        .cornerRadius(15.0)
-                        .ignoresSafeArea()
-                        .foregroundColor(colorScheme == .dark ? CustomColors.DarkModeOverlayBackground : Color.white)
-                        .frame(maxHeight: .infinity)
-                        .shadow(color: CustomColors.LightGray.opacity(0.5), radius: 2.0)
-                    
-                    VStack {
-                        // Property heading
-                        HStack(alignment: .center) {
-                            Rectangle()
-                                .foregroundColor(.clear)
-                                .frame(width: 60, height: 60)
-                                .background(
-                                    AsyncImage(url: URL(string: property.propertyImage)) { image in
-                                        image.resizable()
-                                            .aspectRatio(contentMode: .fill)
-                                            .frame(width: 60, height: 60)
-                                            .clipped()
-                                    } placeholder: {
-                                        ProgressView()
-                                    }
-                                )
-                                .cornerRadius(12)
-                            
-                            Spacer()
-                                .frame(width: 15)
-                            
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(property.propertyName)
-                                .font(Font.custom("Manrope-SemiBold", size: 16))
-                                .kerning(-1)
-                                .foregroundColor(colorScheme == .dark ? Color.white : CustomColors.TorchGreen)
+                    ZStack {
+                        Rectangle()
+                            .cornerRadius(15.0)
+                            .ignoresSafeArea()
+                            .foregroundColor(colorScheme == .dark ? CustomColors.DarkModeOverlayBackground : Color.white)
+                            .frame(maxHeight: .infinity)
+                            .shadow(color: CustomColors.LightGray.opacity(0.5), radius: 2.0)
+                        
+                        VStack {
+                            // Property heading
+                            HStack(alignment: .center) {
+                                Rectangle()
+                                    .foregroundColor(.clear)
+                                    .frame(width: 60, height: 60)
+                                    .background(
+                                        AsyncImage(url: URL(string: property.propertyImage)) { image in
+                                            image.resizable()
+                                                .aspectRatio(contentMode: .fill)
+                                                .frame(width: 60, height: 60)
+                                                .clipped()
+                                        } placeholder: {
+                                            ProgressView()
+                                        }
+                                    )
+                                    .cornerRadius(12)
                                 
-                                Text("\(property.detectors.count) Detectors")
-                                  .font(Font.custom("Manrope-Medium", size: 14))
-                                  .kerning(-0.5)
-                                  .foregroundColor(CustomColors.LightGray)
-                                  .frame(maxWidth: .infinity, minHeight: 20, maxHeight: 20, alignment: .topLeading)
-                            }
-                            .frame(maxWidth: .infinity, alignment: .topLeading)
-                            
-                            Spacer()
-                            
-                            Image(systemName: "ellipsis")
-                                .foregroundColor(CustomColors.LightGray)
-                                .padding(.trailing, 5.0)
-                                .onTapGesture {
-                                    showingOptions.toggle()
+                                Spacer()
+                                    .frame(width: 15)
+                                
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(property.propertyName)
+                                    .font(Font.custom("Manrope-SemiBold", size: 16))
+                                    .kerning(-1)
+                                    .foregroundColor(colorScheme == .dark ? Color.white : CustomColors.TorchGreen)
+                                    
+                                    let textSensor = "Sensor"
+                                    let textSensors = "Sensors"
+                                    let detectorCount = SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors.count
+                                    Text("\(detectorCount) \(detectorCount == 1 ? textSensor : textSensors)")
+                                      .font(Font.custom("Manrope-Medium", size: 14))
+                                      .kerning(-0.5)
+                                      .foregroundColor(CustomColors.LightGray)
+                                      .frame(maxWidth: .infinity, minHeight: 20, maxHeight: 20, alignment: .topLeading)
                                 }
-                        }
-                        .padding(.horizontal, 18.0)
-                        .padding(.top, 18.0)
-                        .padding(.bottom, 8.0)
-                        
-                        Divider()
-                            .padding(.horizontal, 15.0)
-                        
-                        
-                        // Rows of sensors
-                        
-                        let sensorSize = 60
-                        let sensorRowCount = 5
-                        let horizontalSpacing = 15
-                        let availableRowSpace = UIScreen.main.bounds.width - CGFloat(2 * horizontalSpacing + sensorSize * sensorRowCount)
-                        let sensorSpacing = availableRowSpace / CGFloat(sensorRowCount - 1)
-                                                
-                        let x = print(sensorSpacing)
-                        VStack(spacing: sensorSpacing) {
-                            // row 1
-                            HStack(spacing: sensorSpacing) {
-                                ForEach(0..<5, id: \.self) { i in
-                                    if i < (SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors.count) {
-                                        let d = SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors[i]
-//                                        let x = print("Timestamp:  \(d.id)\(d.lastTimestamp), \(d.lastTimestamp.timeIntervalSinceNow)")
-                                        
-//                                        if SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors[i].lastTimestamp!.timeIntervalSinceNow < -300 {
-//                                            SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors[i].connected = false
-//                                            d.connected = false
-//                                        }
-                                        
-                                        ZStack {
-                                            
-                                            if SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors[i].threat == Threat.Red {
-                                                Circle()
-                                                    .fill(CustomColors.TorchRed)
-                                                    .frame(width: 60.0, height: 60.0)
-                                                Image("FireWhite")
-                                                    .resizable()
-                                                    .frame(width: 32, height: 32)
-                                                
-                                                Button {
-                                                    let impactMed = UIImpactFeedbackGenerator(style: .medium)
-                                                    impactMed.impactOccurred()
-                                                    
-//                                                    selectedMarker = annotations.first(where: { marker in
-//                                                        marker.userData as! String == sessionManager.selectedProperty!.detectors[i].id
-//                                                    })
-                                                    for i in 0..<SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors.count {
-                                                        if SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors[i].id == sessionManager.selectedProperty!.detectors[i].id {
-                                                            selectedDetectorIndex = i
-                                                            break
-                                                        }
-                                                    }
-                                                    sensorTapped = true
-                                                    selectedDetector = sessionManager.selectedProperty!.detectors.first(where: { detector in
-                                                        detector.id == sessionManager.selectedProperty!.detectors[i].id
-                                                    })
-                                                    sessionManager.selectedDetectorIndex = i
-                                                    showDetectorDetails = true
-                                                    
-                                                    zoomLevel = 15
-                                                } label: {
-                                                    Circle()
-                                                        .fill(Color.clear)
-                                                        .frame(width: 60.0, height: 60.0)
-                                                }
-                                            } else if SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors[i].threat == Threat.Yellow {
-                                                Circle()
-                                                    .fill(CustomColors.WarningYellow)
-                                                    .frame(width: 60.0, height: 60.0)
-                                                Image("FireWhite")
-                                                    .resizable()
-                                                    .frame(width: 32, height: 32)
-                                                Button {
-                                                    let impactMed = UIImpactFeedbackGenerator(style: .medium)
-                                                    impactMed.impactOccurred()
-                                                    
-//                                                    selectedMarker = annotations.first(where: { marker in
-//                                                        marker.userData as! String == sessionManager.selectedProperty!.detectors[i].id
-//                                                    })
-                                                    for i in 0..<SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors.count {
-                                                        if SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors[i].id == sessionManager.selectedProperty!.detectors[i].id {
-                                                            selectedDetectorIndex = i
-                                                            break
-                                                        }
-                                                    }
-                                                    sensorTapped = true
-                                                    selectedDetector = sessionManager.selectedProperty!.detectors.first(where: { detector in
-                                                        detector.id == sessionManager.selectedProperty!.detectors[i].id
-                                                    })
-                                                    sessionManager.selectedDetectorIndex = i
-                                                    showDetectorDetails = true
-                                                    
-                                                    zoomLevel = 15
-                                                } label: {
-                                                    Circle()
-                                                        .fill(Color.clear)
-                                                        .frame(width: 60.0, height: 60.0)
-                                                }
-//                                                SessionManager.shared.latestTimestampDict[SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors[i].id]
-                                            } else if d.connected == false || (SessionManager.shared.latestTimestampDict.keys.contains(SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors[i].id) &&
-                                                                               SessionManager.shared.latestTimestampDict[SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors[i].id]!.timeIntervalSinceNow < -300) {
-//                                            } else if d.connected == false || SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors[i].lastTimestamp.timeIntervalSinceNow < -300 {
-                                                Circle()
-                                                    .fill(Color(red: 0.67, green: 0.72, blue: 0.73))
-                                                    .frame(width: 60.0, height: 60.0)
-                                                Image(systemName: "wifi.slash")
-                                                    .resizable()
-                                                    .frame(width: 22, height: 22 / 1.07)
-                                                    .foregroundColor(.white)
-                                                Button {
-                                                    let impactMed = UIImpactFeedbackGenerator(style: .medium)
-                                                    impactMed.impactOccurred()
-                                                    
-//                                                    selectedMarker = annotations.first(where: { marker in
-//                                                        marker.userData as! String == sessionManager.selectedProperty!.detectors[i].id
-//                                                    })
-                                                    sensorTapped = true
-                                                    for i in 0..<SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors.count {
-                                                        if SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors[i].id == sessionManager.selectedProperty!.detectors[i].id {
-                                                            selectedDetectorIndex = i
-                                                            break
-                                                        }
-                                                    }
-                                                    selectedDetector = sessionManager.selectedProperty!.detectors.first(where: { detector in
-                                                        detector.id == sessionManager.selectedProperty!.detectors[i].id
-                                                    })
-                                                    sessionManager.selectedDetectorIndex = i
-                                                    showDetectorDetails = true
-                                                    
-                                                    zoomLevel = 15
-                                                } label: {
-                                                    Circle()
-                                                        .fill(Color.clear)
-                                                        .frame(width: 60.0, height: 60.0)
-                                                }
-                                            } else {
-                                                Circle()
-                                                    .fill(colorScheme == .dark ? Color(red: 0.27, green: 0.32, blue: 0.33) : CustomColors.NormalSensorGray)
-                                                    .frame(width: 60.0, height: 60.0)
-                                                Text("\(i + 1)")
-                                                    .font(Font.custom("Manrope-Medium", size: 18.0))
-                                                    .foregroundColor(colorScheme == .dark ? Color.white : CustomColors.TorchGreen)
-                                                Button {
-                                                    let impactMed = UIImpactFeedbackGenerator(style: .medium)
-                                                    impactMed.impactOccurred()
-                                                    
-//                                                    selectedMarker = annotations.first(where: { marker in
-//                                                        guard let userData = marker.userData as? String else {
-//                                                            return false
-//                                                        }
-//                                                        return userData == sessionManager.selectedProperty!.detectors[i].id
-//                                                    })
-                                                    sensorTapped = true
-                                                    for i in 0..<SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors.count {
-                                                        if SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors[i].id == sessionManager.selectedProperty!.detectors[i].id {
-                                                            selectedDetectorIndex = i
-                                                            break
-                                                        }
-                                                    }
-                                                    selectedDetector = sessionManager.selectedProperty!.detectors.first(where: { detector in
-                                                        detector.id == sessionManager.selectedProperty!.detectors[i].id
-                                                    })
-                                                    sessionManager.selectedDetectorIndex = i
-                                                    showDetectorDetails = true
-                                                    
-                                                    zoomLevel = 15
-                                                } label: {
-                                                    Circle()
-                                                        .fill(Color.clear)
-                                                        .frame(width: 60.0, height: 60.0)
-                                                }
-                                            }
-                                            
-                                        }
-                                    } else if (i == SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors.count) {
-                                        // Add sensor button
-                                        VStack(spacing: 7.0) {
-                                            ZStack {
-                                                Circle()
-                                                    .stroke(Color(red: 0.78, green: 0.81, blue: 0.82), lineWidth: 1)
-                                                    .background(Circle().fill(Color.clear))
-                                                    .frame(width: 60.0, height: 60.0)
-                                                Image(systemName: "plus")
-                                                    .foregroundColor(Color(red: 0.78, green: 0.81, blue: 0.82))
-                                                    .font(Font.system(size: 24.0))
-                                                Button {
-                                                    let impactMed = UIImpactFeedbackGenerator(style: .medium)
-                                                    impactMed.impactOccurred()
-                                                    
-                                                    isPresentingScanner = true
-                                                } label: {
-                                                    Circle()
-                                                        .fill(Color.clear)
-                                                        .frame(width: 60.0, height: 60.0)
-                                                }
-                                            }
-
-//                                            Circle()
-//                                                .fill(Color.clear)
-//                                                .frame(width: 5, height: 5)
-                                        }
-                                    } else {
-                                        ZStack {
-                                            Circle()
-                                                .fill(Color.clear)
-                                                .frame(width: 60.0, height: 60.0)
-                                        }
-                                           
+                                .frame(maxWidth: .infinity, alignment: .topLeading)
+                                
+                                Spacer()
+                                
+    //                            Image(systemName: "ellipsis")
+    //                                .foregroundColor(CustomColors.LightGray)
+    //                                .padding(.trailing, 5.0)
+    //                                .onTapGesture {
+    //                                    showingOptions.toggle()
+    //                                }
+                                
+                                Image(systemName: "ellipsis")
+                                    .foregroundColor(CustomColors.LightGray)
+                                    .background(
+                                            Color.clear
+                                                .padding(.trailing, 23.0)
+                                                .padding(.top, 20)
+                                        )
+                                        .contentShape(Rectangle())// Makes the entire padded area tappable
+                                    .onTapGesture {
+                                        let impactMed = UIImpactFeedbackGenerator(style: .medium)
+                                        impactMed.impactOccurred()
+                                        print("Dots tapped")
+                                        showingOptions.toggle()
                                     }
-                                                                    
-                                }
                             }
+                            .padding(.horizontal, 18.0)
+                            .padding(.top, 18.0)
+                            .padding(.bottom, 8.0)
                             
-                            // row 2
-    //
-                            if SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors.count >= 5 {
+                            Divider()
+                                .padding(.horizontal, 15.0)
+                            
+                            
+                            // Rows of sensors
+                            let sensorSize = 60
+                            let sensorRowCount = 5
+                            let horizontalSpacing = 15
+                            let availableRowSpace = UIScreen.main.bounds.width - CGFloat(2 * horizontalSpacing + sensorSize * sensorRowCount)
+                            let sensorSpacing = availableRowSpace / CGFloat(sensorRowCount - 1)
+                                                    
+                            let x = print(sensorSpacing)
+                            VStack(spacing: sensorSpacing) {
+                                // row 1
                                 HStack(spacing: sensorSpacing) {
-                                    ForEach(5..<10, id: \.self) { i in
-                                        if i < (SessionManager.shared.selectedProperty?.detectors.count)! {
+                                    ForEach(0..<5, id: \.self) { i in
+                                        if i < (SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors.count) {
                                             let d = SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors[i]
+    //                                        let x = print("Timestamp:  \(d.id)\(d.lastTimestamp), \(d.lastTimestamp.timeIntervalSinceNow)")
+                                            
+    //                                        if SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors[i].lastTimestamp!.timeIntervalSinceNow < -300 {
+    //                                            SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors[i].connected = false
+    //                                            d.connected = false
+    //                                        }
+                                            
                                             ZStack {
                                                 
                                                 if SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors[i].threat == Threat.Red {
@@ -1172,26 +1112,25 @@ struct PropertyDetailOverlayView: View {
                                                     Image("FireWhite")
                                                         .resizable()
                                                         .frame(width: 32, height: 32)
-
+                                                    
                                                     Button {
                                                         let impactMed = UIImpactFeedbackGenerator(style: .medium)
                                                         impactMed.impactOccurred()
                                                         
-//                                                        selectedMarker = annotations.first(where: { marker in
-//                                                            marker.userData as! String == sessionManager.selectedProperty!.detectors[i].id
-//                                                        })
-                                                        for i in 0..<SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors.count {
-                                                            if SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors[i].id == sessionManager.selectedProperty!.detectors[i].id {
-                                                                selectedDetectorIndex = i
-                                                                break
-                                                            }
-                                                        }
+    //                                                    selectedMarker = annotations.first(where: { marker in
+    //                                                        marker.userData as! String == sessionManager.selectedProperty!.detectors[i].id
+    //                                                    })
+//                                                        for i in 0..<SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors.count {
+//                                                            if SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors[i].id == sessionManager.selectedProperty!.detectors[i].id {
+//                                                                selectedDetectorIndex = i
+//                                                                break
+//                                                            }
+//                                                        }
+                                                        selectedDetectorIndex = i
                                                         sensorTapped = true
-                                                        selectedDetector = sessionManager.selectedProperty!.detectors.first(where: { detector in
-                                                            detector.id == sessionManager.selectedProperty!.detectors[i].id
-                                                        })
+                                                        selectedDetector = SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors[i]
                                                         sessionManager.selectedDetectorIndex = i
-                                                        showDetectorDetails = true
+                                                        withAnimation { showDetectorDetails.toggle(); dragOffset = .zero }
                                                         
                                                         zoomLevel = 15
                                                     } label: {
@@ -1210,21 +1149,20 @@ struct PropertyDetailOverlayView: View {
                                                         let impactMed = UIImpactFeedbackGenerator(style: .medium)
                                                         impactMed.impactOccurred()
                                                         
-//                                                        selectedMarker = annotations.first(where: { marker in
-//                                                            marker.userData as! String == sessionManager.selectedProperty!.detectors[i].id
-//                                                        })
-                                                        for i in 0..<SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors.count {
-                                                            if SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors[i].id == sessionManager.selectedProperty!.detectors[i].id {
-                                                                selectedDetectorIndex = i
-                                                                break
-                                                            }
-                                                        }
+    //                                                    selectedMarker = annotations.first(where: { marker in
+    //                                                        marker.userData as! String == sessionManager.selectedProperty!.detectors[i].id
+    //                                                    })
+                                                        selectedDetectorIndex = i
+//                                                        for i in 0..<SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors.count {
+//                                                            if SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors[i].id == sessionManager.selectedProperty!.detectors[i].id {
+//                                                                selectedDetectorIndex = i
+//                                                                break
+//                                                            }
+//                                                        }
                                                         sensorTapped = true
-                                                        selectedDetector = sessionManager.selectedProperty!.detectors.first(where: { detector in
-                                                            detector.id == sessionManager.selectedProperty!.detectors[i].id
-                                                        })
+                                                        selectedDetector = SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors[i]
                                                         sessionManager.selectedDetectorIndex = i
-                                                        showDetectorDetails = true
+                                                        withAnimation { showDetectorDetails.toggle(); dragOffset = .zero }
                                                         
                                                         zoomLevel = 15
                                                     } label: {
@@ -1232,7 +1170,10 @@ struct PropertyDetailOverlayView: View {
                                                             .fill(Color.clear)
                                                             .frame(width: 60.0, height: 60.0)
                                                     }
-                                                } else if d.connected == false || SessionManager.shared.latestTimestampDict[SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors[i].id]!.timeIntervalSinceNow < -300 {
+    //                                                SessionManager.shared.latestTimestampDict[SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors[i].id]
+                                                } else if d.connected == false || (SessionManager.shared.latestTimestampDict.keys.contains(SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors[i].id) &&
+                                                                                   SessionManager.shared.latestTimestampDict[SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors[i].id]!.timeIntervalSinceNow < -300) {
+    //                                            } else if d.connected == false || SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors[i].lastTimestamp.timeIntervalSinceNow < -300 {
                                                     Circle()
                                                         .fill(Color(red: 0.67, green: 0.72, blue: 0.73))
                                                         .frame(width: 60.0, height: 60.0)
@@ -1244,21 +1185,20 @@ struct PropertyDetailOverlayView: View {
                                                         let impactMed = UIImpactFeedbackGenerator(style: .medium)
                                                         impactMed.impactOccurred()
                                                         
-//                                                        selectedMarker = annotations.first(where: { marker in
-//                                                            marker.userData as! String == sessionManager.selectedProperty!.detectors[i].id
-//                                                        })
-                                                        for i in 0..<SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors.count {
-                                                            if SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors[i].id == sessionManager.selectedProperty!.detectors[i].id {
-                                                                selectedDetectorIndex = i
-                                                                break
-                                                            }
-                                                        }
+    //                                                    selectedMarker = annotations.first(where: { marker in
+    //                                                        marker.userData as! String == sessionManager.selectedProperty!.detectors[i].id
+    //                                                    })
                                                         sensorTapped = true
-                                                        selectedDetector = sessionManager.selectedProperty!.detectors.first(where: { detector in
-                                                            detector.id == sessionManager.selectedProperty!.detectors[i].id
-                                                        })
+                                                        selectedDetectorIndex = i
+//                                                        for i in 0..<SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors.count {
+//                                                            if SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors[i].id == sessionManager.selectedProperty!.detectors[i].id {
+//                                                                selectedDetectorIndex = i
+//                                                                break
+//                                                            }
+//                                                        }
+                                                        selectedDetector = SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors[i]
                                                         sessionManager.selectedDetectorIndex = i
-                                                        showDetectorDetails = true
+                                                        withAnimation { showDetectorDetails.toggle(); dragOffset = .zero }
                                                         
                                                         zoomLevel = 15
                                                     } label: {
@@ -1277,22 +1217,23 @@ struct PropertyDetailOverlayView: View {
                                                         let impactMed = UIImpactFeedbackGenerator(style: .medium)
                                                         impactMed.impactOccurred()
                                                         
-//                                                        selectedMarker = annotations.first(where: { marker in
-//                                                            marker.userData as! String == sessionManager.selectedProperty!.detectors[i].id
-//                                                        })
-                                                        
-                                                        for i in 0..<SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors.count {
-                                                            if SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors[i].id == sessionManager.selectedProperty!.detectors[i].id {
-                                                                selectedDetectorIndex = i
-                                                                break
-                                                            }
-                                                        }
+    //                                                    selectedMarker = annotations.first(where: { marker in
+    //                                                        guard let userData = marker.userData as? String else {
+    //                                                            return false
+    //                                                        }
+    //                                                        return userData == sessionManager.selectedProperty!.detectors[i].id
+    //                                                    })
                                                         sensorTapped = true
-                                                        selectedDetector = sessionManager.selectedProperty!.detectors.first(where: { detector in
-                                                            detector.id == sessionManager.selectedProperty!.detectors[i].id
-                                                        })
+                                                        selectedDetectorIndex = i
+//                                                        for i in 0..<SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors.count {
+//                                                            if SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors[i].id == sessionManager.selectedProperty!.detectors[i].id {
+//                                                                selectedDetectorIndex = i
+//                                                                break
+//                                                            }
+//                                                        }
+                                                        selectedDetector = SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors[i]
                                                         sessionManager.selectedDetectorIndex = i
-                                                        showDetectorDetails = true
+                                                        withAnimation { showDetectorDetails.toggle(); dragOffset = .zero }
                                                         
                                                         zoomLevel = 15
                                                     } label: {
@@ -1301,189 +1242,7 @@ struct PropertyDetailOverlayView: View {
                                                             .frame(width: 60.0, height: 60.0)
                                                     }
                                                 }
-                                                                                        
-                                            }
-                                        } else if (i == SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors.count) {
-                                            // Add sensor button
-                                            VStack(spacing: 7.0) {
-                                                ZStack {
-                                                    Circle()
-                                                        .stroke(Color(red: 0.78, green: 0.81, blue: 0.82), lineWidth: 1)
-                                                        .background(Circle().fill(Color.clear))
-                                                        .frame(width: 60.0, height: 60.0)
-                                                    Image(systemName: "plus")
-                                                        .foregroundColor(Color(red: 0.78, green: 0.81, blue: 0.82))
-                                                        .font(Font.system(size: 24.0))
-                                                    Button {
-                                                        let impactMed = UIImpactFeedbackGenerator(style: .medium)
-                                                        impactMed.impactOccurred()
-                                                        
-                                                        isPresentingScanner = true
-                                                    } label: {
-                                                        Circle()
-                                                            .fill(Color.clear)
-                                                            .frame(width: 60.0, height: 60.0)
-                                                    }
-                                                }
-
-    //                                            Circle()
-    //                                                .fill(Color.clear)
-    //                                                .frame(width: 5, height: 5)
-                                            }
-                                        } else {
-                                            ZStack {
-                                                Circle()
-                                                    .fill(Color.clear)
-                                                    .frame(width: 60.0, height: 60.0)
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-
-                            // row 3
-                            if SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors.count >= 10 {
-                                HStack(spacing: sensorSpacing) {
-                                    ForEach(10..<15, id: \.self) { i in
-                                                                        
-                                        if i < (SessionManager.shared.selectedProperty?.detectors.count)! {
-                                            let d = SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors[i]
-                                            ZStack {
                                                 
-                                                if SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors[i].threat == Threat.Red {
-                                                    Circle()
-                                                        .fill(CustomColors.TorchRed)
-                                                        .frame(width: 60.0, height: 60.0)
-                                                    Image("FireWhite")
-                                                        .resizable()
-                                                        .frame(width: 32, height: 32)
-
-                                                    Button {
-                                                        let impactMed = UIImpactFeedbackGenerator(style: .medium)
-                                                        impactMed.impactOccurred()
-                                                        
-//                                                        selectedMarker = annotations.first(where: { marker in
-//                                                            marker.userData as! String == sessionManager.selectedProperty!.detectors[i].id
-//                                                        })
-                                                        for i in 0..<SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors.count {
-                                                            if SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors[i].id == sessionManager.selectedProperty!.detectors[i].id {
-                                                                selectedDetectorIndex = i
-                                                                break
-                                                            }
-                                                        }
-                                                        selectedDetector = sessionManager.selectedProperty!.detectors.first(where: { detector in
-                                                            detector.id == sessionManager.selectedProperty!.detectors[i].id
-                                                        })
-                                                        sensorTapped = true
-                                                        sessionManager.selectedDetectorIndex = i
-                                                        showDetectorDetails = true
-                                                        
-                                                        zoomLevel = 15
-                                                    } label: {
-                                                        Circle()
-                                                            .fill(Color.clear)
-                                                            .frame(width: 60.0, height: 60.0)
-                                                    }
-                                                } else if SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors[i].threat == Threat.Yellow {
-                                                    Circle()
-                                                        .fill(CustomColors.WarningYellow)
-                                                        .frame(width: 60.0, height: 60.0)
-                                                    Image("FireWhite")
-                                                        .resizable()
-                                                        .frame(width: 32, height: 32)
-                                                    Button {
-                                                        let impactMed = UIImpactFeedbackGenerator(style: .medium)
-                                                        impactMed.impactOccurred()
-                                                        
-//                                                        selectedMarker = annotations.first(where: { marker in
-//                                                            marker.userData as! String == sessionManager.selectedProperty!.detectors[i].id
-//                                                        })
-                                                        for i in 0..<SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors.count {
-                                                            if SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors[i].id == sessionManager.selectedProperty!.detectors[i].id {
-                                                                selectedDetectorIndex = i
-                                                                break
-                                                            }
-                                                        }
-                                                        sensorTapped = true
-                                                        selectedDetector = sessionManager.selectedProperty!.detectors.first(where: { detector in
-                                                            detector.id == sessionManager.selectedProperty!.detectors[i].id
-                                                        })
-                                                        sessionManager.selectedDetectorIndex = i
-                                                        showDetectorDetails = true
-                                                        
-                                                        zoomLevel = 15
-                                                    } label: {
-                                                        Circle()
-                                                            .fill(Color.clear)
-                                                            .frame(width: 60.0, height: 60.0)
-                                                    }
-                                                } else if d.connected == false || SessionManager.shared.latestTimestampDict[SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors[i].id]!.timeIntervalSinceNow < -300 {
-                                                    Circle()
-                                                        .fill(Color(red: 0.67, green: 0.72, blue: 0.73))
-                                                        .frame(width: 60.0, height: 60.0)
-                                                    Image(systemName: "wifi.slash")
-                                                        .resizable()
-                                                        .frame(width: 22, height: 22 / 1.07)
-                                                        .foregroundColor(Color.white)
-                                                    Button {
-                                                        let impactMed = UIImpactFeedbackGenerator(style: .medium)
-                                                        impactMed.impactOccurred()
-//                                                        selectedMarker = annotations.first(where: { marker in
-//                                                            marker.userData as! String == sessionManager.selectedProperty!.detectors[i].id
-//                                                        })
-                                                        for i in 0..<SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors.count {
-                                                            if SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors[i].id == sessionManager.selectedProperty!.detectors[i].id {
-                                                                selectedDetectorIndex = i
-                                                                break
-                                                            }
-                                                        }
-                                                        sensorTapped = true
-                                                        selectedDetector = sessionManager.selectedProperty!.detectors.first(where: { detector in
-                                                            detector.id == sessionManager.selectedProperty!.detectors[i].id
-                                                        })
-                                                        showDetectorDetails = true
-                                                        
-                                                        zoomLevel = 15
-                                                    } label: {
-                                                        Circle()
-                                                            .fill(Color.clear)
-                                                            .frame(width: 60.0, height: 60.0)
-                                                    }
-                                                } else {
-                                                    Circle()
-                                                        .fill(colorScheme == .dark ? Color(red: 0.27, green: 0.32, blue: 0.33) : CustomColors.NormalSensorGray)
-                                                        .frame(width: 60.0, height: 60.0)
-                                                    Text("\(i + 1)")
-                                                        .font(Font.custom("Manrope-Medium", size: 18.0))
-                                                        .foregroundColor(colorScheme == .dark ? Color.white : CustomColors.TorchGreen)
-                                                    Button {
-                                                        let impactMed = UIImpactFeedbackGenerator(style: .medium)
-                                                        impactMed.impactOccurred()
-                                                        
-//                                                        selectedMarker = annotations.first(where: { marker in
-//                                                            marker.userData as! String == sessionManager.selectedProperty!.detectors[i].id
-//                                                        })
-                                                        for i in 0..<SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors.count {
-                                                            if SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors[i].id == sessionManager.selectedProperty!.detectors[i].id {
-                                                                selectedDetectorIndex = i
-                                                                break
-                                                            }
-                                                        }
-                                                        sensorTapped = true
-                                                        selectedDetector = sessionManager.selectedProperty!.detectors.first(where: { detector in
-                                                            detector.id == sessionManager.selectedProperty!.detectors[i].id
-                                                        })
-                                                        sessionManager.selectedDetectorIndex = i
-                                                        showDetectorDetails = true
-                                                        
-                                                        zoomLevel = 15
-                                                    } label: {
-                                                        Circle()
-                                                            .fill(Color.clear)
-                                                            .frame(width: 60.0, height: 60.0)
-                                                    }
-                                                }
-                                                                                        
                                             }
                                         } else if (i == SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors.count) {
                                             // Add sensor button
@@ -1523,67 +1282,466 @@ struct PropertyDetailOverlayView: View {
                                                                         
                                     }
                                 }
+                                
+                                // row 2
+        //
+                                if SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors.count >= 5 {
+                                    HStack(spacing: sensorSpacing) {
+                                        ForEach(5..<10, id: \.self) { i in
+                                            if i < (SessionManager.shared.selectedProperty?.detectors.count)! {
+                                                let d = SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors[i]
+                                                ZStack {
+                                                    
+                                                    if SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors[i].threat == Threat.Red {
+                                                        Circle()
+                                                            .fill(CustomColors.TorchRed)
+                                                            .frame(width: 60.0, height: 60.0)
+                                                        Image("FireWhite")
+                                                            .resizable()
+                                                            .frame(width: 32, height: 32)
+
+                                                        Button {
+                                                            let impactMed = UIImpactFeedbackGenerator(style: .medium)
+                                                            impactMed.impactOccurred()
+                                                            
+    //                                                        selectedMarker = annotations.first(where: { marker in
+    //                                                            marker.userData as! String == sessionManager.selectedProperty!.detectors[i].id
+    //                                                        })
+//                                                            for i in 0..<SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors.count {
+//                                                                if SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors[i].id == sessionManager.selectedProperty!.detectors[i].id {
+//                                                                    selectedDetectorIndex = i
+//                                                                    break
+//                                                                }
+//                                                            }
+                                                            selectedDetectorIndex = i
+                                                            sensorTapped = true
+                                                            selectedDetector = sessionManager.selectedProperty!.detectors.first(where: { detector in
+                                                                detector.id == sessionManager.selectedProperty!.detectors[i].id
+                                                            })
+                                                            sessionManager.selectedDetectorIndex = i
+                                                            withAnimation { showDetectorDetails.toggle(); dragOffset = .zero }
+                                                            
+                                                            zoomLevel = 15
+                                                        } label: {
+                                                            Circle()
+                                                                .fill(Color.clear)
+                                                                .frame(width: 60.0, height: 60.0)
+                                                        }
+                                                    } else if SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors[i].threat == Threat.Yellow {
+                                                        Circle()
+                                                            .fill(CustomColors.WarningYellow)
+                                                            .frame(width: 60.0, height: 60.0)
+                                                        Image("FireWhite")
+                                                            .resizable()
+                                                            .frame(width: 32, height: 32)
+                                                        Button {
+                                                            let impactMed = UIImpactFeedbackGenerator(style: .medium)
+                                                            impactMed.impactOccurred()
+                                                            
+    //                                                        selectedMarker = annotations.first(where: { marker in
+    //                                                            marker.userData as! String == sessionManager.selectedProperty!.detectors[i].id
+    //                                                        })
+//                                                            for i in 0..<SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors.count {
+//                                                                if SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors[i].id == sessionManager.selectedProperty!.detectors[i].id {
+//                                                                    selectedDetectorIndex = i
+//                                                                    break
+//                                                                }
+//                                                            }
+                                                            selectedDetectorIndex = i
+                                                            sensorTapped = true
+                                                            selectedDetector = sessionManager.selectedProperty!.detectors.first(where: { detector in
+                                                                detector.id == sessionManager.selectedProperty!.detectors[i].id
+                                                            })
+                                                            sessionManager.selectedDetectorIndex = i
+                                                            withAnimation { showDetectorDetails.toggle(); dragOffset = .zero }
+                                                            
+                                                            zoomLevel = 15
+                                                        } label: {
+                                                            Circle()
+                                                                .fill(Color.clear)
+                                                                .frame(width: 60.0, height: 60.0)
+                                                        }
+                                                    } else if d.connected == false || SessionManager.shared.latestTimestampDict[SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors[i].id]!.timeIntervalSinceNow < -300 {
+                                                        Circle()
+                                                            .fill(Color(red: 0.67, green: 0.72, blue: 0.73))
+                                                            .frame(width: 60.0, height: 60.0)
+                                                        Image(systemName: "wifi.slash")
+                                                            .resizable()
+                                                            .frame(width: 22, height: 22 / 1.07)
+                                                            .foregroundColor(.white)
+                                                        Button {
+                                                            let impactMed = UIImpactFeedbackGenerator(style: .medium)
+                                                            impactMed.impactOccurred()
+                                                            
+    //                                                        selectedMarker = annotations.first(where: { marker in
+    //                                                            marker.userData as! String == sessionManager.selectedProperty!.detectors[i].id
+    //                                                        })
+//                                                            for i in 0..<SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors.count {
+//                                                                if SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors[i].id == sessionManager.selectedProperty!.detectors[i].id {
+//                                                                    selectedDetectorIndex = i
+//                                                                    break
+//                                                                }
+//                                                            }
+                                                            selectedDetectorIndex = i
+                                                            sensorTapped = true
+                                                            selectedDetector = sessionManager.selectedProperty!.detectors.first(where: { detector in
+                                                                detector.id == sessionManager.selectedProperty!.detectors[i].id
+                                                            })
+                                                            sessionManager.selectedDetectorIndex = i
+                                                            withAnimation { showDetectorDetails.toggle(); dragOffset = .zero }
+                                                            
+                                                            zoomLevel = 15
+                                                        } label: {
+                                                            Circle()
+                                                                .fill(Color.clear)
+                                                                .frame(width: 60.0, height: 60.0)
+                                                        }
+                                                    } else {
+                                                        Circle()
+                                                            .fill(colorScheme == .dark ? Color(red: 0.27, green: 0.32, blue: 0.33) : CustomColors.NormalSensorGray)
+                                                            .frame(width: 60.0, height: 60.0)
+                                                        Text("\(i + 1)")
+                                                            .font(Font.custom("Manrope-Medium", size: 18.0))
+                                                            .foregroundColor(colorScheme == .dark ? Color.white : CustomColors.TorchGreen)
+                                                        Button {
+                                                            let impactMed = UIImpactFeedbackGenerator(style: .medium)
+                                                            impactMed.impactOccurred()
+                                                            
+    //                                                        selectedMarker = annotations.first(where: { marker in
+    //                                                            marker.userData as! String == sessionManager.selectedProperty!.detectors[i].id
+    //                                                        })
+                                                            
+//                                                            for i in 0..<SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors.count {
+//                                                                if SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors[i].id == sessionManager.selectedProperty!.detectors[i].id {
+//                                                                    selectedDetectorIndex = i
+//                                                                    break
+//                                                                }
+//                                                            }
+                                                            selectedDetectorIndex = i
+                                                            sensorTapped = true
+                                                            selectedDetector = sessionManager.selectedProperty!.detectors.first(where: { detector in
+                                                                detector.id == sessionManager.selectedProperty!.detectors[i].id
+                                                            })
+                                                            sessionManager.selectedDetectorIndex = i
+                                                            withAnimation { showDetectorDetails.toggle(); dragOffset = .zero }
+                                                            
+                                                            zoomLevel = 15
+                                                        } label: {
+                                                            Circle()
+                                                                .fill(Color.clear)
+                                                                .frame(width: 60.0, height: 60.0)
+                                                        }
+                                                    }
+                                                                                            
+                                                }
+                                            } else if (i == SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors.count) {
+                                                // Add sensor button
+                                                VStack(spacing: 7.0) {
+                                                    ZStack {
+                                                        Circle()
+                                                            .stroke(Color(red: 0.78, green: 0.81, blue: 0.82), lineWidth: 1)
+                                                            .background(Circle().fill(Color.clear))
+                                                            .frame(width: 60.0, height: 60.0)
+                                                        Image(systemName: "plus")
+                                                            .foregroundColor(Color(red: 0.78, green: 0.81, blue: 0.82))
+                                                            .font(Font.system(size: 24.0))
+                                                        Button {
+                                                            let impactMed = UIImpactFeedbackGenerator(style: .medium)
+                                                            impactMed.impactOccurred()
+                                                            
+                                                            isPresentingScanner = true
+                                                        } label: {
+                                                            Circle()
+                                                                .fill(Color.clear)
+                                                                .frame(width: 60.0, height: 60.0)
+                                                        }
+                                                    }
+
+        //                                            Circle()
+        //                                                .fill(Color.clear)
+        //                                                .frame(width: 5, height: 5)
+                                                }
+                                            } else {
+                                                ZStack {
+                                                    Circle()
+                                                        .fill(Color.clear)
+                                                        .frame(width: 60.0, height: 60.0)
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // row 3
+                                if SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors.count >= 10 {
+                                    HStack(spacing: sensorSpacing) {
+                                        ForEach(10..<15, id: \.self) { i in
+                                                                            
+                                            if i < (SessionManager.shared.selectedProperty?.detectors.count)! {
+                                                let d = SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors[i]
+                                                ZStack {
+                                                    
+                                                    if SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors[i].threat == Threat.Red {
+                                                        Circle()
+                                                            .fill(CustomColors.TorchRed)
+                                                            .frame(width: 60.0, height: 60.0)
+                                                        Image("FireWhite")
+                                                            .resizable()
+                                                            .frame(width: 32, height: 32)
+
+                                                        Button {
+                                                            let impactMed = UIImpactFeedbackGenerator(style: .medium)
+                                                            impactMed.impactOccurred()
+                                                            
+    //                                                        selectedMarker = annotations.first(where: { marker in
+    //                                                            marker.userData as! String == sessionManager.selectedProperty!.detectors[i].id
+    //                                                        })
+//                                                            for i in 0..<SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors.count {
+//                                                                if SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors[i].id == sessionManager.selectedProperty!.detectors[i].id {
+//                                                                    selectedDetectorIndex = i
+//                                                                    break
+//                                                                }
+//                                                            }
+                                                            selectedDetectorIndex = i
+                                                            selectedDetector = sessionManager.selectedProperty!.detectors.first(where: { detector in
+                                                                detector.id == sessionManager.selectedProperty!.detectors[i].id
+                                                            })
+                                                            sensorTapped = true
+                                                            sessionManager.selectedDetectorIndex = i
+                                                            withAnimation { showDetectorDetails.toggle(); dragOffset = .zero }
+                                                            
+                                                            zoomLevel = 15
+                                                        } label: {
+                                                            Circle()
+                                                                .fill(Color.clear)
+                                                                .frame(width: 60.0, height: 60.0)
+                                                        }
+                                                    } else if SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors[i].threat == Threat.Yellow {
+                                                        Circle()
+                                                            .fill(CustomColors.WarningYellow)
+                                                            .frame(width: 60.0, height: 60.0)
+                                                        Image("FireWhite")
+                                                            .resizable()
+                                                            .frame(width: 32, height: 32)
+                                                        Button {
+                                                            let impactMed = UIImpactFeedbackGenerator(style: .medium)
+                                                            impactMed.impactOccurred()
+                                                            
+    //                                                        selectedMarker = annotations.first(where: { marker in
+    //                                                            marker.userData as! String == sessionManager.selectedProperty!.detectors[i].id
+    //                                                        })
+//                                                            for i in 0..<SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors.count {
+//                                                                if SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors[i].id == sessionManager.selectedProperty!.detectors[i].id {
+//                                                                    selectedDetectorIndex = i
+//                                                                    break
+//                                                                }
+//                                                            }
+                                                            selectedDetectorIndex = i
+                                                            sensorTapped = true
+                                                            selectedDetector = sessionManager.selectedProperty!.detectors.first(where: { detector in
+                                                                detector.id == sessionManager.selectedProperty!.detectors[i].id
+                                                            })
+                                                            sessionManager.selectedDetectorIndex = i
+                                                            withAnimation { showDetectorDetails.toggle(); dragOffset = .zero }
+                                                            
+                                                            zoomLevel = 15
+                                                        } label: {
+                                                            Circle()
+                                                                .fill(Color.clear)
+                                                                .frame(width: 60.0, height: 60.0)
+                                                        }
+                                                    } else if d.connected == false || SessionManager.shared.latestTimestampDict[SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors[i].id]!.timeIntervalSinceNow < -300 {
+                                                        Circle()
+                                                            .fill(Color(red: 0.67, green: 0.72, blue: 0.73))
+                                                            .frame(width: 60.0, height: 60.0)
+                                                        Image(systemName: "wifi.slash")
+                                                            .resizable()
+                                                            .frame(width: 22, height: 22 / 1.07)
+                                                            .foregroundColor(Color.white)
+                                                        Button {
+                                                            let impactMed = UIImpactFeedbackGenerator(style: .medium)
+                                                            impactMed.impactOccurred()
+    //                                                        selectedMarker = annotations.first(where: { marker in
+    //                                                            marker.userData as! String == sessionManager.selectedProperty!.detectors[i].id
+    //                                                        })
+//                                                            for i in 0..<SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors.count {
+//                                                                if SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors[i].id == sessionManager.selectedProperty!.detectors[i].id {
+//                                                                    selectedDetectorIndex = i
+//                                                                    break
+//                                                                }
+//                                                            }
+                                                            selectedDetectorIndex = i
+                                                            sensorTapped = true
+                                                            selectedDetector = sessionManager.selectedProperty!.detectors.first(where: { detector in
+                                                                detector.id == sessionManager.selectedProperty!.detectors[i].id
+                                                            })
+                                                            withAnimation { showDetectorDetails.toggle(); dragOffset = .zero }
+                                                            
+                                                            zoomLevel = 15
+                                                        } label: {
+                                                            Circle()
+                                                                .fill(Color.clear)
+                                                                .frame(width: 60.0, height: 60.0)
+                                                        }
+                                                    } else {
+                                                        Circle()
+                                                            .fill(colorScheme == .dark ? Color(red: 0.27, green: 0.32, blue: 0.33) : CustomColors.NormalSensorGray)
+                                                            .frame(width: 60.0, height: 60.0)
+                                                        Text("\(i + 1)")
+                                                            .font(Font.custom("Manrope-Medium", size: 18.0))
+                                                            .foregroundColor(colorScheme == .dark ? Color.white : CustomColors.TorchGreen)
+                                                        Button {
+                                                            let impactMed = UIImpactFeedbackGenerator(style: .medium)
+                                                            impactMed.impactOccurred()
+                                                            
+    //                                                        selectedMarker = annotations.first(where: { marker in
+    //                                                            marker.userData as! String == sessionManager.selectedProperty!.detectors[i].id
+    //                                                        })
+//                                                            for i in 0..<SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors.count {
+//                                                                if SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors[i].id == sessionManager.selectedProperty!.detectors[i].id {
+//                                                                    selectedDetectorIndex = i
+//                                                                    break
+//                                                                }
+//                                                            }
+                                                            selectedDetectorIndex = i
+                                                            sensorTapped = true
+                                                            selectedDetector = sessionManager.selectedProperty!.detectors.first(where: { detector in
+                                                                detector.id == sessionManager.selectedProperty!.detectors[i].id
+                                                            })
+                                                            sessionManager.selectedDetectorIndex = i
+                                                            withAnimation { showDetectorDetails.toggle(); dragOffset = .zero }
+                                                            
+                                                            zoomLevel = 15
+                                                        } label: {
+                                                            Circle()
+                                                                .fill(Color.clear)
+                                                                .frame(width: 60.0, height: 60.0)
+                                                        }
+                                                    }
+                                                                                            
+                                                }
+                                            } else if (i == SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors.count) {
+                                                // Add sensor button
+                                                VStack(spacing: 7.0) {
+                                                    ZStack {
+                                                        Circle()
+                                                            .stroke(Color(red: 0.78, green: 0.81, blue: 0.82), lineWidth: 1)
+                                                            .background(Circle().fill(Color.clear))
+                                                            .frame(width: 60.0, height: 60.0)
+                                                        Image(systemName: "plus")
+                                                            .foregroundColor(Color(red: 0.78, green: 0.81, blue: 0.82))
+                                                            .font(Font.system(size: 24.0))
+                                                        Button {
+                                                            let impactMed = UIImpactFeedbackGenerator(style: .medium)
+                                                            impactMed.impactOccurred()
+                                                            
+                                                            isPresentingScanner = true
+                                                        } label: {
+                                                            Circle()
+                                                                .fill(Color.clear)
+                                                                .frame(width: 60.0, height: 60.0)
+                                                        }
+                                                    }
+
+        //                                            Circle()
+        //                                                .fill(Color.clear)
+        //                                                .frame(width: 5, height: 5)
+                                                }
+                                            } else {
+                                                ZStack {
+                                                    Circle()
+                                                        .fill(Color.clear)
+                                                        .frame(width: 60.0, height: 60.0)
+                                                }
+                                                   
+                                            }
+                                                                            
+                                        }
+                                    }
+                                }
                             }
-                        }
-                        .padding(.top, 10.0)
-                        .padding(.bottom, 20.0)
-                        
-                        if newDetector != nil {
-                            HStack {
-                                Spacer()
-                                
-                                let verb = newDetector?.coordinate == nil ? "Set" : "Change"
-                                
-                                Button(action: {
-                                    let impactMed = UIImpactFeedbackGenerator(style: .medium)
-                                    impactMed.impactOccurred()
+                            .padding(.top, 10.0)
+                            .padding(.bottom, 20.0)
+                            
+                            if newDetector != nil {
+                                HStack {
+                                    Spacer()
                                     
-                                    self.isConfirmingLocation = true
-                                    var pointAnnotation = PointAnnotation(id: newDetector!.id, coordinate: self.pin)
-                                    var annotationIcon = "NewSensorIcon\(newDetector!.sensorIdx!)"
-                                    var annotationImage = UIImage(named: annotationIcon)!
-                                    annotationImage.scale(newWidth: 1.0)
-                                    pointAnnotation.image = .init(image: annotationImage, name: annotationIcon)
-                        //            pointAnnotation.image?.image.scale = 4.0
-                                    pointAnnotation.iconAnchor = .bottom
-                                    pointAnnotation.iconSize = 0.25
-                                    pointAnnotation.iconOffset = [40, 0]
+                                    let verb = newDetector?.coordinate == nil ? "Set" : "Change"
                                     
-                                    self.annotations.append(pointAnnotation)
+                                    Button(action: {
+                                        let impactMed = UIImpactFeedbackGenerator(style: .medium)
+                                        impactMed.impactOccurred()
+                                                                            
+                                        let x = print("Added 1.5, new detector count: \(SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors.count), \(SessionManager.shared.selectedProperty!.detectors.count)")
+                                        if SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors.count < SessionManager.shared.selectedProperty!.detectors.count {
+                                            SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors.append(SessionManager.shared.selectedProperty!.detectors.last!)
+                                        }
+                                        
+                                        self.isConfirmingLocation = true
+                                        var pointAnnotation = PointAnnotation(id: newDetector!.id, coordinate: self.pin)
+                                        var annotationIcon = "NewSensorIcon\(newDetector!.sensorIdx!)"
+                                        var annotationImage = UIImage(named: annotationIcon)!
+                                        annotationImage.scale(newWidth: 1.0)
+                                        pointAnnotation.image = .init(image: annotationImage, name: annotationIcon)
+                            //            pointAnnotation.image?.image.scale = 4.0
+                                        pointAnnotation.iconAnchor = .bottom
+                                        pointAnnotation.iconSize = 0.25
+                                        pointAnnotation.iconOffset = [40, 0]
+                                        
+                                        self.annotations.append(pointAnnotation)
+                                        
+                                        print("Created new sensor annotation with id: \(pointAnnotation.id)")
+                                        
+                                        
+                                        
+                                    }) {
+                                        Text("\(verb) the position for new sensor")
+                                        .font(.custom("Manrope-SemiBold", size: 16))
+                                        .frame(maxWidth: .infinity)
+                                        .frame(height: 60)
+                                        .foregroundColor(.white)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 100)
+                                                .foregroundColor(self.nextButtonColor)
+                                        )
+                                        .padding(.horizontal, 16)
+                                        .padding(.bottom, 20)
+                                    }
                                     
-                                }) {
-                                    Text("\(verb) the position for new sensor")
-                                    .font(.custom("Manrope-SemiBold", size: 16))
-                                    .frame(maxWidth: .infinity)
-                                    .frame(height: 60)
-                                    .foregroundColor(.white)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 100)
-                                            .foregroundColor(self.nextButtonColor)
-                                    )
-                                    .padding(.horizontal, 16)
-                                    .padding(.bottom, 20)
+                                    Spacer()
                                 }
                                 
                                 Spacer()
                             }
-                            
-                            Spacer()
-                        }
-                        }
-                }
-            }
-            .fixedSize(horizontal: false, vertical: true)
-            .overlay(GeometryReader { geo in
-                Rectangle().fill(Color.clear)
-                    .onAppear {
-                        self.size = geo.size
-                        self.mapOffset = geo.size
-                    }.onChange(of: geo.size) { updatedSize in
-                        self.size = updatedSize
-                        self.mapOffset = geo.size
+                            }
                     }
-            })
+                }
+                .fixedSize(horizontal: false, vertical: true)
+                .overlay(GeometryReader { geo in
+                    Rectangle().fill(Color.clear)
+                        .onAppear {
+                            self.size = geo.size
+                            if !showDetectorDetails {
+                                self.mapOffset = geo.size
+                                print("Set mapOffset 1 \(self.mapOffset)")
+                            }
+                        }.onChange(of: geo.size) { updatedSize in
+                            if !showDetectorDetails {
+                                self.size = updatedSize
+                                self.mapOffset = geo.size
+                                print("Set mapOffset 2 \(self.mapOffset)")
+                            }
+                        }
+                        .onChange(of: showDetectorDetails) { newValue in
+                            if !newValue {
+                                print("Property updating mapOffset")
+                                self.mapOffset = self.size
+                            }
+                        }
+                })
+            }
+                        
         }
     }
 }
@@ -1635,13 +1793,22 @@ struct AddDetectorConfirmLocationOverlayView: View {
                                 impactMed.impactOccurred()
                                 
 //                                sessionManager.setDetectorCoordinate(detector: newDetector!, coordinate: self.pin)
+//                                self.annotations = []
                                 newDetector?.coordinate = self.pin
+                                
+                                print("ADDDDING \(newDetectorIndex)")
                                 SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors[newDetectorIndex].coordinate = self.pin
+                                let x = print("Added 2, new detector count: \(SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors.count)")
+//                                SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors[newDetectorIndex/*].coordinate = self.pin*/
+//                                newDetector!.coordinate = self.pin
+//                                SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors.append(newDetector!)
                                 print("Pin position: \(self.pin)")
-                                print("Set coordinate: \(newDetector?.coordinate)")
+                                print("Set coordinate: \(SessionManager.shared.properties[SessionManager.shared.selectedPropertyIndex].detectors[newDetectorIndex].coordinate)")
                                 
                                 var pointAnnotation = PointAnnotation(id: newDetector!.id, coordinate: self.pin)
                                 var annotationIcon = "NewSensorIcon\(newDetector!.sensorIdx!)"
+                                
+                                print("Created new sensor annotation with id: \(pointAnnotation.id)")
                                 
                                 var annotationImage = UIImage(named: annotationIcon)!
                                 annotationImage.scale(newWidth: 1.0)
@@ -1651,7 +1818,7 @@ struct AddDetectorConfirmLocationOverlayView: View {
                                 pointAnnotation.iconSize = 0.25
                                 pointAnnotation.iconOffset = [40, 0]
                                 
-                                self.annotations.append(pointAnnotation)
+//                                self.annotations.append(pointAnnotation)
                                 
 //                                let sensorMarker = GMSMarker(position: self.pin)
 //                                sensorMarker.userData = newDetector!.id
@@ -1776,10 +1943,12 @@ struct BackButton: View {
                 let impactMed = UIImpactFeedbackGenerator(style: .medium)
                 impactMed.impactOccurred()
                                 
-                withAnimation(.easeIn(duration: 0.1)) {
+                withAnimation(.easeIn(duration: 2.0)) {
                     self.dragOffset = .zero
                 }
-                showDetectorDetails = false
+                withAnimation {
+                    showDetectorDetails.toggle(); dragOffset = .zero
+                }
                 selectedDetector = nil
             } label: {
                 Circle()
